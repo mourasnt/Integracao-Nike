@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: db_logistica
+    restart: always
+    environment:
+      POSTGRES_USER: admin_api
+      POSTGRES_PASSWORD: password_secreta_123
+      POSTGRES_DB: logistica_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - logistica_net
+
+  api:
+    build: .
+    container_name: api_logistica
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://admin_api:password_secreta_123@db:5432/logistica_db
+      PYTHONPATH: /code
+      SECRET_KEY: change-me-very-secret
+      ACCESS_TOKEN_EXPIRE_MINUTES: '120'
+      JWT_ALGORITHM: HS256
+      INITIAL_USER: integracao_logistica
+      INITIAL_PASSWORD: StrongP@ssw0rd
+      CLIENT_USER: '09098221000380'
+      CLIENT_PASSWORD: 'JpY7HMVz2tMQeF04pxmTaMT09DtQyG'
+    volumes:
+      - .:/code
+    command: ["./docker-entrypoint.sh"]
+    networks:
+      - logistica_net
+
+networks:
+  logistica_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
