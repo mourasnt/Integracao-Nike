@@ -69,4 +69,17 @@ class ShipmentInvoice(Base):
 
     cfop = Column(String(20), nullable=True)
 
+    trackings = relationship("ShipmentInvoiceTracking", back_populates="invoice", cascade="all, delete-orphan")
     shipment = relationship("Shipment", back_populates="invoices")
+
+
+class ShipmentInvoiceTracking(Base):
+    __tablename__ = "shipment_invoice_trackings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    shipment_invoice_id = Column(Integer, ForeignKey("shipment_invoices.id"), nullable=False, index=True)
+    codigo_evento = Column(String(20), nullable=False)
+    descricao = Column(String(255), nullable=True)
+    data_evento = Column(DateTime(timezone=True), server_default=func.now())
+
+    invoice = relationship("ShipmentInvoice", back_populates="trackings")

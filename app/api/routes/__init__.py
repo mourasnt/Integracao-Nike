@@ -1,9 +1,13 @@
 from fastapi import APIRouter
+from importlib import import_module
 
 router = APIRouter()
 
-from . import auth, emissao
+# Lazy-include submodule routers to avoid circular imports at package init
+def _include(name: str, prefix: str, tags: list[str]):
+    mod = import_module(f".{name}", package=__package__)
+    router.include_router(mod.router, prefix=prefix, tags=tags)
 
-# Explicitly include routers
-router.include_router(auth.router, prefix="", tags=["autenticacao"])
-router.include_router(emissao.router, prefix="", tags=["emissao"])
+_include("auth", "", ["autenticacao"])
+_include("emissao", "", ["emissao"])
+_include("cargas", "", ["cargas"])
