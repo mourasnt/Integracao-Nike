@@ -5,13 +5,14 @@ from sqlalchemy.orm import selectinload
 from app.db import get_db
 from app.models.shipment import Shipment
 from app.services.tracking_service import TrackingService
+from app.api.deps.security import get_current_user
 from typing import Optional, Any
 
 router = APIRouter(prefix="/cargas")
 
 
-@router.get("/")
-async def listar_cargas(db: AsyncSession = Depends(get_db)):
+@router.get("/", )
+async def listar_cargas( current_user: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     q = select(Shipment).options(selectinload(Shipment.invoices))
     res = await db.execute(q)
     cargas = res.scalars().all()
@@ -38,7 +39,7 @@ async def listar_cargas(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{carga_id}")
-async def obter_carga(carga_id: int, db: AsyncSession = Depends(get_db)):
+async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     q = select(Shipment).where(Shipment.id == carga_id).options(selectinload(Shipment.invoices))
     res = await db.execute(q)
     carga = res.scalars().first()
@@ -68,6 +69,7 @@ async def alterar_status(
     carga_id: int,
     novo_status: Optional[Any] = Body(None, example={"code": "1"}),
     anexos: Optional[list] = Body(None),
+    current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     # Simple code extraction: accept "1" or {"code":"1"} or {"novo_status":"1"}
