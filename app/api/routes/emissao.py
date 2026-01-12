@@ -14,8 +14,7 @@ router = APIRouter()
 async def receive_emission(payload: NotfisPayload, current_user: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Recebe um payload Notfis e persiste cada minuta e suas notas.
     Regras principais aplicadas:
-    - Validação de token JWT (via `get_current_user`)
-    - Validação de `cServ` (inteiro positivo)
+    - Validação de token JWT
     - Validação dos campos obrigatórios das notas (ex: `nDoc`, `chave` com 44 chars)
     - Transação por minuta (um erro em uma minuta não interrompe as outras)
     """

@@ -7,7 +7,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: admin_api
-      POSTGRES_PASSWORD: dUiZBmHsbLWG2/HiV4zx3eFYn0W7hp/yQ2xhdRI5v3U49cWV9kkIW
+      POSTGRES_PASSWORD: dUiZBmHsbLWG2HiV4zx3eFYn0W7hpyQ2xhdRI5v3U49cWV9kkIW
       POSTGRES_DB: logistica_db
     ports:
       - "5432"
@@ -24,7 +24,7 @@ services:
     ports:
       - "8282:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://admin_api:dUiZBmHsbLWG2/HiV4zx3eFYn0W7hp/yQ2xhdRI5v3U49cWV9kkIW@db:5432/logistica_db
+      DATABASE_URL: postgresql+asyncpg://admin_api:dUiZBmHsbLWG2HiV4zx3eFYn0W7hpyQ2xhdRI5v3U49cWV9kkIW@db:5432/logistica_db
       PYTHONPATH: /code
       SECRET_KEY: $2a$12$xVtfI/pePb.krohfumSDBedzcOF/bEaKDOsTcdqYDTIY.fk8FOIqe
       ACCESS_TOKEN_EXPIRE_MINUTES: '120'
