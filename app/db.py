@@ -24,8 +24,6 @@ async def ensure_db_initialized():
             return
         async with engine.begin() as conn:
             logger.debug("Creating DB schema (url=%s)", settings.database_url)
-            # For sqlite (tests/ local development) drop and recreate tables to ensure metadata changes
-            # (tests run in a single process and SQLAlchemy's create_all won't alter existing tables).
             if 'sqlite' in str(settings.database_url):
                 logger.debug("SQLite detected - dropping existing tables to refresh schema")
                 await conn.run_sync(Base.metadata.drop_all)
@@ -34,7 +32,6 @@ async def ensure_db_initialized():
         logger.debug("DB schema created and initialized")
 
 async def get_db():
-    # Make sure schema exists before returning a session (prevents "no such table" errors)
     await ensure_db_initialized()
     async with AsyncSessionLocal() as session:
         yield session

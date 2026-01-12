@@ -7,7 +7,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: admin_api
-      POSTGRES_PASSWORD: password_secreta_123
+      POSTGRES_PASSWORD: vouOUGcouP88vc88Y888ccpuulcvu88paw
       POSTGRES_DB: logistica_db
     ports:
       - "5432:5432"
@@ -30,7 +30,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: '120'
       JWT_ALGORITHM: HS256
       INITIAL_USER: integracao_logistica
-      INITIAL_PASSWORD: StrongP@ssw0rd
+      INITIAL_PASSWORD: Integracao@123Senha
       CLIENT_USER: '09098221000380'
       CLIENT_PASSWORD: 'JpY7HMVz2tMQeF04pxmTaMT09DtQyG'
     volumes:
