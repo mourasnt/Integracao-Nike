@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: dUiZBmHsbLWG2/HiV4zx3eFYn0W7hp/yQ2xhdRI5v3U49cWV9kkIW
       POSTGRES_DB: logistica_db
     ports:
-      - "5432:5432"
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -22,7 +22,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8000:8000"
+      - "8282:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://admin_api:dUiZBmHsbLWG2/HiV4zx3eFYn0W7hp/yQ2xhdRI5v3U49cWV9kkIW@db:5432/logistica_db
       PYTHONPATH: /code
