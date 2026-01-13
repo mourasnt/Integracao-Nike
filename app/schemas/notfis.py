@@ -106,6 +106,7 @@ class NotaFiscalItem(BaseModel):
     tpDoc: str
     xEsp: str
     xNat: str
+    xmlsB64: Optional[List[str]] = None
     # CT-e
     cte: Optional[dict] = None
 

@@ -1,7 +1,33 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, Numeric, Text, ForeignKey
+from typing import Optional
+from sqlalchemy import Column, Integer, String, DateTime, Float, Numeric, Text, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db import Base
+from pydantic import BaseModel, field_validator, model_validator
+from app.services.constants import VALID_CODES
+
+
+class ShipmentStatus(BaseModel):
+    code: str
+    message: Optional[str] = None
+    type: Optional[str] = None
+
+    @field_validator("code")
+    def validate_code(cls, v):
+        if v not in VALID_CODES:
+            raise ValueError(f"Código de status inválido: {v}")
+        return v
+
+    @model_validator(mode="after")
+    def fill_from_code(self):
+        info = VALID_CODES.get(self.code)
+        if info:
+            if not self.message:
+                self.message = info.get("message")
+            if not self.type:
+                self.type = info.get("type")
+        return self
+    
 
 class Shipment(Base):
     __tablename__ = "shipments"
@@ -39,6 +65,12 @@ class Shipment(Base):
     volumes_qty = Column(Integer, nullable=True)
     raw_payload = Column(Text, nullable=True)
 
+    status = Column(
+        JSON,
+        nullable=False,
+        default=lambda: {"code": "10", **VALID_CODES["10"]},
+    )
+
     invoices = relationship("ShipmentInvoice", back_populates="shipment", cascade="all, delete-orphan")
 
 class ShipmentInvoice(Base):
@@ -66,6 +98,7 @@ class ShipmentInvoice(Base):
     x_esp = Column(String(255), nullable=True)
     x_nat = Column(String(255), nullable=True)
     cte_chave = Column(String(100), nullable=True)
+    xmls_b64 = Column(JSON, nullable=True)
 
     cfop = Column(String(20), nullable=True)
 
