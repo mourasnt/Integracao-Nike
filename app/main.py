@@ -58,9 +58,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             logger.debug("Validation error for /emissao: {}", first)
 
             if isinstance(loc, (list, tuple)) and 'documentos' in loc:
-                return JSONResponse(status_code=422, content={"detail": _serialize_validation_errors(errors)})
-            if 'Lista de minutas vazia' in msg:
-                return JSONResponse(status_code=422, content={"detail": _serialize_validation_errors(errors)})
+                return JSONResponse(status_code=400, content={
+                "message": "Falha ao processar solicitação",
+                "status": 0,
+                "data": [{"status": 0, "message": msg, "id": None}]
+            })
 
             if isinstance(loc, (list, tuple)) and len(loc) > 0:
                 field = loc[-1]
@@ -70,14 +72,18 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
                     msg = "Campo obrigatório 'chave' não informado"
                 else:
                     msg = f"Campo '{field}' inválido: {msg}"
-            return JSONResponse(status_code=200, content={
+            return JSONResponse(status_code=400, content={
                 "message": "Falha ao processar solicitação",
                 "status": 0,
                 "data": [{"status": 0, "message": msg, "id": None}]
             })
 
         logger.debug("Validation error for {}: {}", request.url.path, exc.errors())
-        return JSONResponse(status_code=422, content={"detail": _serialize_validation_errors(exc.errors())})
+        return JSONResponse(status_code=400, content={
+            "message": "Falha ao processar solicitação",
+            "status": 0,
+            "data": [{"status": 0, "message": "Erro de validação", "id": None}]
+        })
     except Exception as e:
         logger.exception("Unhandled exception in validation_exception_handler: {}", str(e))
         # Return a safe, spec-compatible error response instead of raising
@@ -98,7 +104,7 @@ async def json_decode_exception_handler(request: Request, exc: JSONDecodeError):
     except Exception as e:
         logger.exception('Failed to read request body for JSONDecodeError: %s', str(e))
 
-    return JSONResponse(status_code=200, content={
+    return JSONResponse(status_code=400, content={
         "message": "Falha ao processar solicitação",
         "status": 0,
         "data": [{"status": 0, "message": "JSON inválido", "id": None}]
