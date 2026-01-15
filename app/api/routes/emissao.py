@@ -25,11 +25,19 @@ async def receive_emission(payload: NotfisPayload, current_user: str = Depends(g
         docs = getattr(payload, 'documentos', None)
     except Exception as e:
         logger.exception("Payload structure invalid: %s", e)
-        return JSONResponse(status_code=422, content={"detail": "Payload inválido"})
+        return JSONResponse(status_code=422, content={
+                "message": "Falha ao processar solicitação",
+                "status": 0,
+                "data": [{"status": 0, "message": "payload inválido", "id": None}]
+            })
 
     if not docs or len(docs) == 0:
         # If there are no minutas, return 200 with an empty data list (tests accept 200/201)
-        return JSONResponse(status_code=200, content={"message": "Nenhuma minuta para processar", "status": 1, "data": []})
+        return JSONResponse(status_code=400, content={
+                "message": "Falha ao processar solicitação",
+                "status": 0,
+                "data": [{"status": 0, "message": "Nenhuma minuta para processar", "id": None}]
+            })
 
     response_data = []
     global_status = 1
