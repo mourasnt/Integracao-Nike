@@ -113,6 +113,7 @@ class NotaFiscalItem(BaseModel):
     @field_validator('chave')
     def chave_length(cls, v):
         if not v or len(v) != 44:
+            print(f'Chave inválida: {v}')
             raise ValueError('chave deve ter 44 caracteres')
         return v
 

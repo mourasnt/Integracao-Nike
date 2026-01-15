@@ -25,6 +25,8 @@ def setup_db():
     # Run async create_all in a fresh loop
     async def _create():
         async with engine.begin() as conn:
+            # Ensure a clean schema for tests by dropping existing tables first
+            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
             # Make sure users_api exists
             try:

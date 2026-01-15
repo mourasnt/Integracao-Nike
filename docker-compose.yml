@@ -36,7 +36,9 @@ services:
       BRUDAM_CLIENTE: '09098221000380'
       BRUDAM_USUARIO: 659622e0526337fd21fb894cb24a72ee
       BRUDAM_SENHA: 843c6e949059ec5040e62ad7330959981d3e505e90146e8be15f2ec0f1fa16d7
+      BRUDAM_URL_LOGIN: https://api.brudam.com.br/services/auth/login
       BRUDAM_URL_TRACKING: https://homosbf.brudam.com.br/api/v1/tracking/ocorrencias
+      BRUDAM_URL_UPLOAD_CTE: https://api.brudam.com.br/services/dfe/cte/upload
     volumes:
       - .:/code
     command: ["./docker-entrypoint.sh"]

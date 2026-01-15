@@ -52,30 +52,11 @@ async def receive_emission(payload: NotfisPayload, current_user: str = Depends(g
                 except Exception:
                     raise ValueError("Campo 'cServ' inválido")
 
-                shipment = Shipment(
-                    service_code=str(item.minuta.cServ),
-                    c_tab=getattr(item.minuta, 'cTab', None),
-                    tp_emi=getattr(item.minuta, 'tpEmi', None),
-                    emission_status=item.minuta.cStatus,
-                    c_aut=getattr(item.minuta, 'cAut', None),
-                    n_doc_emit=getattr(item.minuta, 'nDocEmit', None),
-                    d_emi=getattr(item.minuta, 'dEmi', None),
-                    tomador_cnpj=item.toma.nDoc if item.toma else None,
-                    rem_nDoc=item.rem.nDoc,
-                    rem_xNome=item.rem.xNome,
-                    dest_nDoc=item.dest.nDoc,
-                    dest_xNome=item.dest.xNome,
-                    pbru=item.minuta.carga.pBru if item.minuta.carga else None,
-                    pcub=item.minuta.carga.pCub if item.minuta.carga else None,
-                    qvol=item.minuta.carga.qVol if item.minuta.carga else None,
-                    vtot=item.minuta.carga.vTot if item.minuta.carga else None,
-                    c_orig_calc=item.minuta.carga.cOrigCalc if item.minuta.carga else None,
-                    c_dest_calc=item.minuta.carga.cDestCalc if item.minuta.carga else None,
-                    total_weight=float(item.minuta.carga.pBru) if item.minuta.carga and item.minuta.carga.pBru else None,
-                    total_value=float(item.minuta.carga.vTot) if item.minuta.carga and item.minuta.carga.vTot else None,
-                    volumes_qty=int(item.minuta.carga.qVol) if item.minuta.carga and item.minuta.carga.qVol else None,
-                    raw_payload=json.dumps(raw)
-                )
+                # Build Shipment from minuta using mapper utility
+                from app.utils.mappers import minuta_to_shipment_payload, nota_to_invoice_payload
+
+                shipment_payload = minuta_to_shipment_payload(item.minuta, item.rem, item.dest, item.toma, json.dumps(raw))
+                shipment = Shipment(**shipment_payload)
                 db.add(shipment)
                 await db.flush()
 
@@ -86,37 +67,20 @@ async def receive_emission(payload: NotfisPayload, current_user: str = Depends(g
                     if not getattr(nf, "chave", None) or (nf.chave and len(nf.chave) != 44):
                         raise ValueError("Campo 'chave' inválido (deve ter 44 caracteres)")
 
-                    invoice = ShipmentInvoice(
-                        shipment_id=shipment.id,
-                        n_ped=getattr(nf, 'nPed', None),
-                        invoice_number=nf.nDoc,
-                        invoice_series=nf.serie,
-                        d_emi=getattr(nf, 'dEmi', None),
-                        v_bc=getattr(nf, 'vBC', None),
-                        v_icms=getattr(nf, 'vICMS', None),
-                        v_bcst=getattr(nf, 'vBCST', None),
-                        v_st=getattr(nf, 'vST', None),
-                        v_prod=getattr(nf, 'vProd', None),
-                        invoice_value=nf.vNF,
-                        ncfop=getattr(nf, 'nCFOP', None),
-                        pbru=getattr(nf, 'pBru', None),
-                        qvol=getattr(nf, 'qVol', None),
-                        access_key=nf.chave,
-                        tp_doc=getattr(nf, 'tpDoc', None),
-                        x_esp=getattr(nf, 'xEsp', None),
-                        x_nat=getattr(nf, 'xNat', None),
-                        cte_chave=None if not getattr(nf, 'cte', None) else nf.cte.get('Chave')
-                    )
+                    invoice_payload = nota_to_invoice_payload(nf, shipment_id=shipment.id)
+                    invoice = ShipmentInvoice(**invoice_payload)
                     db.add(invoice)
 
                 try:
-                    await db.commit()
+                    from app.utils.db_utils import commit_or_raise
+                    await commit_or_raise(db)
                     response_data.append({"status": 1, "message": "Importação realizada com sucesso", "id": shipment.id})
                 except Exception as e:
                     await db.rollback()
                     global_status = 0
                     global_message = "Houve erros no processamento"
                     logger.exception("Erro ao commitar minuta (shipment id may be None): %s", e)
+                    # Provide a concise message back to the client
                     response_data.append({"status": 0, "message": f"Erro durante commit: {e.__class__.__name__}: {str(e)}", "id": None})
             except Exception as e:
                 await db.rollback()

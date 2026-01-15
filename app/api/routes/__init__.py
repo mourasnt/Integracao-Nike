@@ -11,3 +11,4 @@ def _include(name: str, prefix: str, tags: list[str]):
 _include("auth", "", ["autenticacao"])
 _include("emissao", "", ["emissao"])
 _include("cargas", "", ["cargas"])
+_include("prefat", "", ["prefat"])

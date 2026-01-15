@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Body, File, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, Body, File, UploadFile, Form, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.db import get_db
 from app.models.shipment import Shipment, ShipmentInvoice
 from app.services.constants import VALID_CODES, VALID_CODES_SET
-from app.services.vblog_tracking import VBlogTrackingService
+from app.services.tracking_service import TrackingService
 from app.api.deps.security import get_current_user
 from typing import Optional, Any
 from pathlib import Path
@@ -17,6 +17,9 @@ router = APIRouter(prefix="/cargas")
 
 @router.get("/", )
 async def listar_cargas( current_user: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user != "integracao_logistica":
+        raise HTTPException(403, "Acesso negado")
+
     q = select(Shipment).options(selectinload(Shipment.invoices))
     res = await db.execute(q)
     cargas = res.scalars().all()
@@ -39,6 +42,7 @@ async def listar_cargas( current_user: str = Depends(get_current_user), db: Asyn
             ]
         }
 
+    print(current_user)
     return [serialize(c) for c in cargas]
 
 
@@ -48,7 +52,7 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
     res = await db.execute(q)
     carga = res.scalars().first()
     if not carga:
-        raise HTTPException(404, "Carga não encontrada")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     return {
         "id": carga.id,
@@ -124,7 +128,7 @@ async def alterar_status(
     code_to_send = code_val
 
     # Build full status model using domain model to auto-fill message/type
-    from app.models.shipment import ShipmentStatus
+    from app.schemas.shipment import ShipmentStatus
     novo_status_model = ShipmentStatus(code=code_to_send)
     carga.status = novo_status_model.model_dump()
 
@@ -170,29 +174,25 @@ async def alterar_status(
                     continue
 
     # Atualiza status interno
-    db.commit()
-    db.refresh(carga)
+    from app.utils.db_utils import commit_or_raise
+    await commit_or_raise(db)
+    await db.refresh(carga)
 
-    # Envia tracking para cada CT-e da carga
-    tv = VBlogTrackingService()  # usa env vars se não passar cnpj/token
+    # Envia tracking
+    tv = TrackingService()  # uses env vars if not provided
     results = []
-    
-    # registrar tracking interno
-    from app.schemas.tracking import TrackingCreate
-    from app.services.tracking_service import TrackingService
 
     success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final)
     results.append({"cte": str(carga.id), "ok": success, "vblog_response": resp_text[:500]})
 
-    TrackingService.registrar(
-            db,
-            TrackingCreate(
-                shipment_invoice_id=carga.id,
-                codigo_evento=code_to_send,
-                descricao=VALID_CODES[code_to_send]["message"],
-                data_evento=datetime.datetime.now(datetime.timezone.utc)
-            )
-        )
+    # registrar tracking interno
+    await TrackingService.registrar(
+        db,
+        carga.id,
+        code_to_send,
+        descricao=VALID_CODES[code_to_send]["message"],
+        data_evento=datetime.datetime.now(datetime.timezone.utc)
+    )
 
     return {"status": "ok", "codigo_enviado": code_to_send, "results": results}
 
@@ -224,4 +224,9 @@ async def upload_xml(
     db.add(invoice)
     await db.commit()
 
-    return {"status": "ok", "xmls_b64": xmls_b64}
+    from services.upload_cte_service import UploadCteService
+    upload_svc = UploadCteService()
+
+    success, resp_text = await upload_svc.enviar(xmls_b64)
+
+    return {"status": success, "xmls_b64": xmls_b64, "upload_response": resp_text}

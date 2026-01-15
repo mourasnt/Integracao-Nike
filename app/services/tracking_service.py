@@ -5,11 +5,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.shipment import ShipmentInvoiceTracking
 
-try:
-    from app.services.constants import VALID_CODES, VALID_CODES_SET
-except Exception:
-    VALID_CODES = {}
-    VALID_CODES_SET = set()
+from app.services.constants import VALID_CODES, VALID_CODES_SET
 
 
 class TrackingService:
@@ -38,7 +34,7 @@ class TrackingService:
     ) -> dict:
 
         # permissive validation
-        data_fmt = (data_evento or datetime.datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+        data_fmt = (data_evento or datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
 
         documento = {
             "cliente": self.cliente,
@@ -86,7 +82,7 @@ class TrackingService:
         return success, text
 
     @staticmethod
-    async def registrar(session: AsyncSession, shipment_invoice_id: int, codigo_evento: str, descricao: str | None = None, data_evento: datetime = None):
+    async def registrar(session: AsyncSession, shipment_invoice_id: int, codigo_evento: str, descricao: str | None = None, data_evento: Optional[datetime.datetime] = None):
         """Persist a tracking record in DB (async).
 
         Params:

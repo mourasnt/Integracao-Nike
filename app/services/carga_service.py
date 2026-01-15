@@ -1,6 +1,7 @@
 # app/services/carga_service.py
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.models.carga import Carga
@@ -10,39 +11,40 @@ from app.schemas.carga import CargaCreate, CargaUpdate
 class CargaService:
 
     @staticmethod
-    def criar_carga(db: Session, data: CargaCreate) -> Carga:
-        carga = Carga(**data.dict())
+    async def criar_carga(db: AsyncSession, data: CargaCreate) -> Carga:
+        carga = Carga(**data.model_dump() if hasattr(data, 'model_dump') else data.dict())
         db.add(carga)
-        db.commit()
-        db.refresh(carga)
+        await db.commit()
+        await db.refresh(carga)
         return carga
 
     @staticmethod
-    def listar_cargas(db: Session):
-        return db.query(Carga).all()
+    async def listar_cargas(db: AsyncSession):
+        q = await db.execute(select(Carga))
+        return q.scalars().all()
 
     @staticmethod
-    def obter_por_id(db: Session, carga_id: UUID) -> Carga:
-        return db.query(Carga).filter(Carga.id == carga_id).first()
+    async def obter_por_id(db: AsyncSession, carga_id: UUID) -> Carga:
+        return await db.get(Carga, carga_id)
 
     @staticmethod
-    def atualizar_carga(db: Session, carga_id: UUID, data: CargaUpdate) -> Carga:
-        carga = CargaService.obter_por_id(db, carga_id)
+    async def atualizar_carga(db: AsyncSession, carga_id: UUID, data: CargaUpdate) -> Carga:
+        carga = await CargaService.obter_por_id(db, carga_id)
         if not carga:
             return None
 
-        for campo, valor in data.dict(exclude_unset=True).items():
+        for campo, valor in data.model_dump(exclude_unset=True).items():
             setattr(carga, campo, valor)
 
-        db.commit()
-        db.refresh(carga)
+        await db.commit()
+        await db.refresh(carga)
         return carga
 
     @staticmethod
-    def deletar_carga(db: Session, carga_id: UUID) -> bool:
-        carga = CargaService.obter_por_id(db, carga_id)
+    async def deletar_carga(db: AsyncSession, carga_id: UUID) -> bool:
+        carga = await CargaService.obter_por_id(db, carga_id)
         if not carga:
             return False
-        db.delete(carga)
-        db.commit()
+        await db.delete(carga)
+        await db.commit()
         return True

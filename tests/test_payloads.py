@@ -7,7 +7,7 @@ from datetime import datetime
 # ==============================================================================
 # CONFIGURAÇÕES E CONSTANTES
 # ==============================================================================
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "http://127.0.0.1:8282"
 AUTH_URL = f"{BASE_URL}/autenticacao"
 EMISSAO_URL = f"{BASE_URL}/emissao"
 

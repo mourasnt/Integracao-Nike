@@ -34,7 +34,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 def create_access_token(data: dict):
     try:
         from loguru import logger
-        logger.debug("Creating access token for sub=%s", data.get('sub'))
+        print("Creating access token for sub=%s", data.get('sub'))
     except Exception:
         pass
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
@@ -49,20 +49,19 @@ def create_access_token(data: dict):
 
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
-    from loguru import logger
-    logger.debug("Attempting to authorize request via bearer token")
+    print("Attempting to authorize request via bearer token")
     if credentials is None or not credentials.credentials:
-        logger.warning("No credentials presented in bearer token header")
+        print("No credentials presented in bearer token header")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm] if _JWT_AVAILABLE else None)
         username: str = payload.get("sub")
         if username is None:
-            logger.warning("JWT valid but 'sub' missing: %s", payload)
+            print("JWT valid but 'sub' missing: %s", payload)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-        logger.debug("Authenticated user=%s via token", username)
+        print("Authenticated user=%s via token", username)
         return username
     except Exception as e:
-        logger.warning("Token decode failed: %s", str(e))
+        print("Token decode failed: %s", str(e))
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)

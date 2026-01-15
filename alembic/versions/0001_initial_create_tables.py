@@ -66,6 +66,7 @@ def upgrade():
         sa.Column('rem_xNome', sa.String(length=255), nullable=True),
         sa.Column('dest_nDoc', sa.String(length=20), nullable=True),
         sa.Column('dest_xNome', sa.String(length=255), nullable=True),
+        sa.Column('status', sa.JSON(), nullable=False, server_default='{"code": "10", "message": "Em processamento", "type": "info"}'),
     )
 
     # =========================================================
@@ -98,9 +99,17 @@ def upgrade():
         sa.Column('cte_chave', sa.String(length=100), nullable=True),
     )
 
+    op.create_table(
+        'prefats',
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('prefat_base64', sa.Text(), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
+    )
+
 
 def downgrade():
     op.drop_table('shipment_invoices')
     op.drop_table('shipments')
     op.drop_index(op.f('ix_users_api_username'), table_name='users_api')
     op.drop_table('users_api')
+    op.drop_table('prefats')
