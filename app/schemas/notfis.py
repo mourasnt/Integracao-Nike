@@ -29,7 +29,7 @@ class MinutaHeader(BaseModel):
     cOrigCalc: str
     cDestCalc: str
 
-    @field_validator('dEmi', 'cOrigCalc', 'cDestCalc')
+    @field_validator('dEmi')
     def validate_date(cls, v):
         # Expect YYYY-MM-DD
         try:
