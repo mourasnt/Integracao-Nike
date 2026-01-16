@@ -19,15 +19,34 @@ def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if not inspector.has_column('shipments', 'status'):
-        op.add_column(
-            'shipments',
-            sa.Column(
-                'status',
-                sa.JSON(),
-                nullable=False,
-                server_default='{"code": "10", "message": "Em processamento", "type": "info"}',
-            ),
-        )
+        # Prefer a non-failing native ALTER for Postgres to avoid race DuplicateColumnError
+        if bind.dialect.name == 'postgresql':
+            try:
+                op.execute(
+                    "ALTER TABLE shipments ADD COLUMN IF NOT EXISTS status JSON DEFAULT '{""code"": ""10"", ""message"": ""Em processamento"", ""type"": ""info""}'"
+                )
+                op.execute("ALTER TABLE shipments ALTER COLUMN status SET NOT NULL")
+            except Exception:
+                # Fallback to SQLAlchemy op.add_column if raw SQL isn't supported or fails
+                op.add_column(
+                    'shipments',
+                    sa.Column(
+                        'status',
+                        sa.JSON(),
+                        nullable=False,
+                        server_default='{"code": "10", "message": "Em processamento", "type": "info"}',
+                    ),
+                )
+        else:
+            op.add_column(
+                'shipments',
+                sa.Column(
+                    'status',
+                    sa.JSON(),
+                    nullable=False,
+                    server_default='{"code": "10", "message": "Em processamento", "type": "info"}',
+                ),
+            )
     else:
         # Ensure the column has a non-null constraint and a server default to match model expectations
         try:
