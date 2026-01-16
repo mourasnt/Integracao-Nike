@@ -1,0 +1,165 @@
+{
+  "documentos": [
+    {
+      "minuta": {
+        "toma": "0",
+        "nDocEmit": "09098221000542",
+        "dEmi": "2025-12-05",
+        "cServ": "98",
+        "cTab": "1",
+        "tpEmi": 18,
+        "tpAmb": "2",
+        "rSeg": "0",
+				"cStatus": 1,
+        "cSeg": "61550141000172",
+        "cAut": "320479",
+        "carga": {
+          "pBru": "9.70",
+          "pCub": "0.00",
+          "qVol": "2",
+          "vTot": "269.44"
+        },
+				 "cDestCalc":"3550308",
+         "cOrigCalc":"3125101",
+        "xOrdemServico": "1",
+        "situacao": null,
+        "nOcc": null,
+        "vSeg": null,
+        "formaPag": null,
+        "metodoPag": null,
+        "Uuid": "5e55b5e9-6c5f-4639-a453-3b2388745517"
+      },
+      "compl": {
+        "prevWMS": {
+          "dPrev": "2025-08-07",
+          "hPrev": "00:47:30"
+        },
+        "respEntrega": {
+          "tpResp": 2,
+          "nDoc": "34790798000134",
+          "nPla": "BCD0123",
+          "nMot": "28571454892"
+        },
+        "cOrigCalc": "3125101",
+        "cDestCalc": "3550308",
+        "xObs": null
+      },
+      "toma": {
+        "nDoc": "09098221000542",
+        "IE": "18945030190",
+        "cFiscal": "2",
+        "xNome": "8002 PREMIER CD FISIA EXTREMA NIKE STORE",
+        "xFant": "8002 PREMIER CD FISIA EXTREMA NIKE STORE",
+        "xLgr": "ESTM LUIZ LOPES NETO",
+        "nro": "728",
+        "xBairro": "DISTRITO INDUSTRIAL TENENTES",
+        "cMun": "3125101",
+        "CEP": "37645050",
+        "cPais": "1058",
+        "nFone": null,
+        "ISUF": null,
+        "xCpl": null,
+        "email": null
+      },
+      "rem": {
+        "nDoc": "09098221000542",
+        "IE": "18945030190",
+        "cFiscal": "2",
+        "xNome": "8002 PREMIER CD FISIA EXTREMA NIKE STORE",
+        "xFant": "8002 PREMIER CD FISIA EXTREMA NIKE STORE",
+        "xLgr": "ESTM LUIZ LOPES NETO",
+        "nro": "728",
+        "xBairro": "DISTRITO INDUSTRIAL TENENTES",
+        "cMun": "3125101",
+        "CEP": "37645050",
+        "cPais": "1058",
+        "nFone": null,
+        "ISUF": null,
+        "xCpl": null,
+        "email": null
+      },
+      "exped": {
+        "nDoc": "09098221000542",
+        "IE": "18945030190",
+        "cFiscal": "2",
+        "xNome": "8002 PREMIER CD FISIA EXTREMA NIKE STORE",
+        "xFant": "8002 PREMIER CD FISIA EXTREMA NIKE STORE",
+        "xLgr": "ESTM LUIZ LOPES NETO",
+        "nro": "728",
+        "xBairro": "DISTRITO INDUSTRIAL TENENTES",
+        "cMun": "3125101",
+        "CEP": "37645050",
+        "cPais": "1058",
+        "nFone": null,
+        "ISUF": null,
+        "xCpl": null,
+        "email": null,
+        "tipo": 3
+      },
+      "receb": {
+        "nDoc": "59546515005012",
+        "IE": "133730259116",
+        "cFiscal": "2",
+        "xNome": "2058 - FISIA COM DE PRODUTOS ESPORTIVOS S.A.",
+        "xFant": "2058 - FISIA COM DE PRODUTOS ESPORTIVOS S.A.",
+        "xLgr": "AVENIDA IBIRAPUERA",
+        "nro": "3103",
+        "xBairro": "INDIANOPOLIS",
+        "cMun": "3550308",
+        "CEP": "04029902",
+        "cPais": "1058",
+        "nFone": null,
+        "ISUF": null,
+        "xCpl": null,
+        "email": null,
+        "tipo": 4
+      },
+      "dest": {
+        "nDoc": "59546515005012",
+        "IE": "133730259116",
+        "cFiscal": "2",
+        "xNome": "2058 - FISIA COM DE PRODUTOS ESPORTIVOS S.A.",
+        "xFant": "2058 - FISIA COM DE PRODUTOS ESPORTIVOS S.A.",
+        "xLgr": "AVENIDA IBIRAPUERA",
+        "nro": "3103",
+        "xBairro": "INDIANOPOLIS",
+        "cMun": "3550308",
+        "CEP": "04029902",
+        "cPais": "1058",
+        "nFone": null,
+        "ISUF": null,
+        "xCpl": null,
+        "email": null
+      },
+      "documentos": [
+        {
+          "serie": "001",
+          "nDoc": "176094",
+          "dEmi": "2026-01-14",
+          "vBC": "269.44",
+          "vICMS": "32.33",
+          "vBCST": "0.00",
+          "vST": "0.00",
+          "vProd": "269.44",
+          "vNF": "269.44",
+          "nCFOP": "6152",
+          "pBru": "9.700",
+          "qVol": "1",
+          "chave": "31260109098221000542550010001760941327569086",
+          "tpDoc": "55",
+          "xEsp": "Diversos",
+          "xNat": "Diversos",
+          "volumes": [
+            {
+              "qVol": "1",
+              "pBru": "4.60",
+              "cEtiq": "3ZX01"
+            }
+          ],
+          "nPed": " ",
+          "PIN": " "
+        }
+      ]
+    }
+  ]
+}
