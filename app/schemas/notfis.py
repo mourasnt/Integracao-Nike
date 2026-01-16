@@ -35,7 +35,7 @@ class MinutaHeader(BaseModel):
         try:
             datetime.strptime(v, "%Y-%m-%d")
         except Exception:
-            raise ValueError("dEmi inválido, deve ser 'YYYY-MM-DD'")
+            raise ValueError(f"dEmi inválido: {v}, deve ser 'YYYY-MM-DD'")
         return v
 
     @field_validator('cServ')
