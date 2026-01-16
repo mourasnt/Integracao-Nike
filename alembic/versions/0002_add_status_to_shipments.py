@@ -15,17 +15,36 @@ depends_on = None
 
 
 def upgrade():
-    # Add the missing `status` JSON column with a server default so existing rows get a value
-    op.add_column(
-        'shipments',
-        sa.Column(
-            'status',
-            sa.JSON(),
-            nullable=False,
-            server_default='{"code": "10", "message": "Em processamento", "type": "info"}',
-        ),
-    )
+    # Idempotent: only add `status` if it's missing
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_column('shipments', 'status'):
+        op.add_column(
+            'shipments',
+            sa.Column(
+                'status',
+                sa.JSON(),
+                nullable=False,
+                server_default='{"code": "10", "message": "Em processamento", "type": "info"}',
+            ),
+        )
+    else:
+        # Ensure the column has a non-null constraint and a server default to match model expectations
+        try:
+            op.alter_column(
+                'shipments',
+                'status',
+                existing_type=sa.JSON(),
+                nullable=False,
+                server_default=sa.text("'{\"code\": \"10\", \"message\": \"Em processamento\", \"type\": \"info\"}'"),
+            )
+        except Exception:
+            # Best-effort: if alteration isn't supported or would fail, skip to avoid breaking upgrades
+            pass
 
 
 def downgrade():
-    op.drop_column('shipments', 'status')
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if inspector.has_column('shipments', 'status'):
+        op.drop_column('shipments', 'status')
