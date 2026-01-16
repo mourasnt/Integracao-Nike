@@ -8,10 +8,8 @@ class Carga(BaseModel):
     pCub: str
     qVol: str
     vTot: str
-    cOrigCalc: str
-    cDestCalc: str
 
-    @field_validator('pBru', 'qVol', 'vTot', 'pCub', 'cOrigCalc', 'cDestCalc')
+    @field_validator('pBru', 'qVol', 'vTot', 'pCub')
     def non_empty(cls, v):
         if v is None or (isinstance(v, str) and v.strip() == ''):
             raise ValueError("Campo obrigatório na carga")
@@ -28,8 +26,10 @@ class MinutaHeader(BaseModel):
     cStatus: int
     cAut: str
     carga: Carga
+    cOrigCalc: str
+    cDestCalc: str
 
-    @field_validator('dEmi')
+    @field_validator('dEmi', 'cOrigCalc', 'cDestCalc')
     def validate_date(cls, v):
         # Expect YYYY-MM-DD
         try:
