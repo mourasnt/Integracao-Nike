@@ -49,6 +49,27 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     from loguru import logger
     try:
 
+        # Special handling for authentication endpoint to return AuthOut-shaped payload
+        if request.url.path == "/autenticacao":
+            try:
+                body = await request.body()
+            except Exception as e:
+                body = b"<failed to read body>"
+                logger.exception("Failed to read request body for /autenticacao validation error: %s", str(e))
+
+            logger.error("Validation error for /autenticacao: %s -- body=%s", exc.errors(), body)
+            print(f"Validation error on /autenticacao: {exc.errors()} body={body}")
+
+            errors = exc.errors() or []
+            first = errors[0] if errors else {}
+            msg = first.get("msg", "Erro de validação")
+
+            return JSONResponse(status_code=400, content={
+                "message": msg,
+                "status": 0,
+                "data": None
+            })
+
         if request.url.path == "/emissao":
             errors = exc.errors() or []
             first = errors[0] if errors else {}
@@ -100,9 +121,20 @@ async def json_decode_exception_handler(request: Request, exc: JSONDecodeError):
 
     try:
         body = await request.body()
-        logger.error('Invalid JSON received at %s: %s', request.url.path, body)
     except Exception as e:
+        body = b"<failed to read body>"
         logger.exception('Failed to read request body for JSONDecodeError: %s', str(e))
+
+    logger.error('Invalid JSON received at %s: %s', request.url.path, body)
+
+    # Special-case authentication endpoint to return AuthOut format
+    if request.url.path == "/autenticacao":
+        print(f"Invalid JSON on /autenticacao: body={body}")
+        return JSONResponse(status_code=400, content={
+            "message": "JSON inválido",
+            "status": 0,
+            "data": None
+        })
 
     return JSONResponse(status_code=400, content={
         "message": "Falha ao processar solicitação",
@@ -116,6 +148,25 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     from loguru import logger
 
     logger.warning("HTTPException handled for %s: %s", request.url.path, exc)
+
+    # For authentication endpoint return AuthOut structured response
+    if request.url.path == "/autenticacao":
+        # Unauthorized access
+        if exc.status_code in (401, 403):
+            print(f"HTTPException on /autenticacao: {exc}")
+            return JSONResponse(status_code=exc.status_code, content={
+                "message": "Acesso não autorizado",
+                "status": 0,
+                "data": None
+            })
+        # Other HTTP errors
+        print(f"HTTPException on /autenticacao: {exc}")
+        return JSONResponse(status_code=exc.status_code, content={
+            "message": str(exc.detail) or "Erro",
+            "status": 0,
+            "data": None
+        })
+
     if exc.status_code in (401, 403):
         return JSONResponse(status_code=exc.status_code, content={
             "message": "Acesso não autorizado",
@@ -137,7 +188,17 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         body = await request.body()
     except Exception:
         body = b"<failed to read body>"
+
     logger.exception("Unhandled exception on %s %s: %s -- body=%s", request.method, request.url.path, exc, body)
+
+    # If the error happened on /autenticacao return AuthOut-shaped response and print
+    if request.url.path == "/autenticacao":
+        print(f"Unhandled exception on /autenticacao: {exc} -- body={body}")
+        return JSONResponse(status_code=500, content={
+            "message": "Erro interno",
+            "status": 0,
+            "data": None
+        })
  
     return JSONResponse(status_code=500, content={
         "message": "Erro interno do servidor",
