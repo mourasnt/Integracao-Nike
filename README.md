@@ -11,6 +11,10 @@ DB:
 
 Use `.env` to set DATABASE_URL (ex: postgresql+asyncpg://...)
 
+To apply DB migrations manually run:
+
+    alembic upgrade head
+
 Run with Docker Compose (Postgres + API):
 
 1. Build and start:
