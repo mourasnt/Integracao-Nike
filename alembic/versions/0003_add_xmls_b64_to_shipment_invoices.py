@@ -17,7 +17,7 @@ depends_on = None
 def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    if not inspector.has_column('shipment_invoices', 'xmls_b64'):
+    if not inspector.get_columns('shipment_invoices', 'xmls_b64'):
         # Prefer Postgres-safe SQL to avoid DuplicateColumnError in concurrent runs
         if bind.dialect.name == 'postgresql':
             try:
@@ -31,5 +31,5 @@ def upgrade():
 def downgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    if inspector.has_column('shipment_invoices', 'xmls_b64'):
+    if inspector.get_columns('shipment_invoices', 'xmls_b64'):
         op.drop_column('shipment_invoices', 'xmls_b64')
