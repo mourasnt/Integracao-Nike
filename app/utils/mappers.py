@@ -16,14 +16,14 @@ def minuta_to_shipment_payload(minuta, rem, dest, toma, raw_payload: str) -> dic
         "c_aut": _safe_get(minuta, "cAut"),
         "n_doc_emit": _safe_get(minuta, "nDocEmit"),
         "d_emi": _safe_get(minuta, "dEmi"),
+        "c_orig_calc": _safe_get(minuta, "cOrigCalc"),
+        "c_dest_calc": _safe_get(minuta, "cDestCalc"),
 
         # carga
         "pbru": _safe_get(carga, "pBru"),
         "pcub": _safe_get(carga, "pCub"),
         "qvol": _safe_get(carga, "qVol"),
         "vtot": _safe_get(carga, "vTot"),
-        "c_orig_calc": _safe_get(carga, "cOrigCalc"),
-        "c_dest_calc": _safe_get(carga, "cDestCalc"),
 
         # actors
         "tomador_cnpj": _safe_get(toma, "nDoc"),
