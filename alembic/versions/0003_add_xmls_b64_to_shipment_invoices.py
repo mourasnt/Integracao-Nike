@@ -9,7 +9,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '0003_add_xmls_b64'
-down_revision = '0001_initial'
+down_revision = '0002_add_status'
 branch_labels = None
 depends_on = None
 
@@ -17,7 +17,18 @@ depends_on = None
 def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    if not inspector.get_columns('xmls_b64', 'shipment_invoices'):
+
+    # If the table doesn't exist, skip safely (it may be created by another migration or application startup)
+    if not inspector.has_table('shipment_invoices'):
+        return
+
+    # Add column only if it is missing. Use get_columns() (wrapped) because Inspector has no has_column().
+    try:
+        existing_cols = [c['name'] for c in inspector.get_columns('shipment_invoices')]
+    except Exception:
+        existing_cols = []
+
+    if 'xmls_b64' not in existing_cols:
         # Prefer Postgres-safe SQL to avoid DuplicateColumnError in concurrent runs
         if bind.dialect.name == 'postgresql':
             try:
@@ -31,5 +42,6 @@ def upgrade():
 def downgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    if inspector.get_columns('xmls_b64', 'shipment_invoices'):
+
+    if inspector.has_table('shipment_invoices') and inspector.has_column('shipment_invoices', 'xmls_b64'):
         op.drop_column('shipment_invoices', 'xmls_b64')
