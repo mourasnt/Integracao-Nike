@@ -217,19 +217,58 @@ async def upload_xml(
         raise HTTPException(400, "Nenhum arquivo XML enviado")
 
     xmls_b64 = []
+    found_chaves = []
+    import base64
+    import xml.etree.ElementTree as ET
+    import re
+
+    def extract_chave_from_cte_bytes(content_bytes: bytes) -> Optional[str]:
+        try:
+            text = content_bytes.decode('utf-8')
+        except Exception:
+            try:
+                text = content_bytes.decode('latin1')
+            except Exception:
+                text = None
+        if not text:
+            return None
+        # Try quick regex for <chCTe>
+        m = re.search(r'<chCTe>(\d{44})</chCTe>', text)
+        if m:
+            return m.group(1)
+        # Fallback to Id="CTe<44digits>"
+        m = re.search(r'Id\s*=\s*"CTe(\d{44})"', text)
+        if m:
+            return m.group(1)
+        # Try parsing and searching by tag-suffix (handles namespaces)
+        try:
+            root = ET.fromstring(text)
+            for el in root.iter():
+                if el.tag.endswith('chCTe') and (el.text and el.text.strip()):
+                    return el.text.strip()
+        except Exception:
+            pass
+        return None
+
     for xml_file in xmls:
         content = await xml_file.read()
-        import base64
         xml_b64 = base64.b64encode(content).decode('utf-8')
         xmls_b64.append(xml_b64)
 
+        chave = extract_chave_from_cte_bytes(content)
+        if chave:
+            found_chaves.append(chave)
+
+    # Save XMLs and detected chave (first found) to DB
     invoice.xmls_b64 = xmls_b64
+    if found_chaves:
+        invoice.cte_chave = found_chaves[0]
     db.add(invoice)
     await db.commit()
 
-    from services.upload_cte_service import UploadCteService
+    from app.services.upload_cte_service import UploadCteService
     upload_svc = UploadCteService()
 
     success, resp_text = await upload_svc.enviar(xmls_b64)
 
-    return {"status": success, "xmls_b64": xmls_b64, "upload_response": resp_text}
+    return {"status": success, "cte_chave": invoice.cte_chave, "xmls_b64": xmls_b64, "upload_response": resp_text}
