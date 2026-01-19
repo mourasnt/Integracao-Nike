@@ -89,7 +89,7 @@ class Actor(BaseModel):
         return v
 
 class NotaFiscalItem(BaseModel):
-    nPed: Optional[str]
+    nPed: Optional[str] = None
     serie: str
     nDoc: Optional[str]
     dEmi: str
@@ -109,6 +109,13 @@ class NotaFiscalItem(BaseModel):
     xmlsB64: Optional[List[str]] = None
     # CT-e
     cte: Optional[dict] = None
+
+    @field_validator('nPed', mode='before')
+    def normalize_nped(cls, v):
+        # Treat blank strings as missing (None)
+        if isinstance(v, str) and v.strip() == '':
+            return None
+        return v
 
     @field_validator('chave')
     def chave_length(cls, v):

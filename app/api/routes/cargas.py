@@ -74,12 +74,12 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
 @router.post("/{carga_id}/status")
 async def alterar_status(
     carga_id: int,
-    novo_status: Optional[Any] = Body(None, example={"code": "1"}),
+    novo_status: Optional[Any] = Body(None, examples={"code": "1"}),
     anexo: Optional[UploadFile] = File(None),
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
-    # Note: OpenAPI shows `novo_status` (example with {"code":"1"}) and `anexo` (file). Internally we accept string or object for `novo_status` and also a hidden `anexos` JSON field.
+    # Note: OpenAPI shows `novo_status` (examples with {"code":"1"}) and `anexo` (file). Internally we accept string or object for `novo_status` and also a hidden `anexos` JSON field.
     q = select(ShipmentInvoice).where(ShipmentInvoice.id == carga_id)
     res = await db.execute(q)
     carga = res.scalars().first()

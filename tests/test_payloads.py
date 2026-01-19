@@ -282,7 +282,7 @@ def gerar_cenarios_campos():
             ))
 
     # [cite_start]4. CAMPOS OBRIGATÓRIOS DAS NOTAS FISCAIS [cite: 180]
-    campos_nf = ["nPed", "serie", "nDoc", "dEmi", "vBC", "vICMS", "vBCST", "vST", "vProd", "vNF", "nCFOP", "pBru", "qVol", "chave", "tpDoc", "xEsp", "xNat"]
+    campos_nf = ["serie", "nDoc", "dEmi", "vBC", "vICMS", "vBCST", "vST", "vProd", "vNF", "nCFOP", "pBru", "qVol", "chave", "tpDoc", "xEsp", "xNat"]
     for campo in campos_nf:
         cenarios.append((
             f"Nota Fiscal: faltando '{campo}'",
