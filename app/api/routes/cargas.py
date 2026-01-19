@@ -74,7 +74,7 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
 @router.post("/{carga_id}/status")
 async def alterar_status(
     carga_id: int,
-    novo_status: Optional[Any] = Body(None, examples={"code": "1"}),
+    novo_status: Optional[Any] = Body(None, example={"code": "1"}, description="Código do novo status (p.ex. {\"code\": \"1\"} ou ""1"""),
     anexo: Optional[UploadFile] = File(None),
     request: Request = None,
     db: AsyncSession = Depends(get_db),
