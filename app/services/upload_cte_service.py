@@ -41,11 +41,10 @@ class UploadCteService:
         client = await self._get_client()
 
         payload = {
-            "usuario": self.usuario,
-            "senha": self.senha
+            "username": self.usuario,
+            "password": self.senha
         }
 
-        print(payload)
         try:
             resp = await client.post(self.endpoint_login, json=payload, headers={"Content-Type": "application/json"})
             resp.raise_for_status()
