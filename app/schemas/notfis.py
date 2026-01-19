@@ -89,9 +89,9 @@ class Actor(BaseModel):
         return v
 
 class NotaFiscalItem(BaseModel):
-    nPed: str
+    nPed: Optional[str]
     serie: str
-    nDoc: str
+    nDoc: Optional[str]
     dEmi: str
     vBC: str
     vICMS: str
