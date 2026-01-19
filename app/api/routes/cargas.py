@@ -266,9 +266,14 @@ async def upload_xml(
     db.add(invoice)
     await db.commit()
 
-    from app.services.upload_cte_service import UploadCteService
+    from app.services.upload_cte_service import UploadCteService, BrudamError
     upload_svc = UploadCteService()
 
-    success, resp_text = await upload_svc.enviar(xmls_b64)
+    try:
+        success, resp_text = await upload_svc.enviar(xmls_b64)
+    except BrudamError as e:
+        status_code = 400 if isinstance(e.status, int) and 400 <= e.status < 500 else 502
+        detail = {"message": str(e.message or "Brudam error"), "brudam_status": e.status, "brudam_body": e.body}
+        raise HTTPException(status_code=status_code, detail=detail)
 
     return {"status": success, "cte_chave": invoice.cte_chave, "xmls_b64": xmls_b64, "upload_response": resp_text}
