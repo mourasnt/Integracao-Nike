@@ -45,6 +45,7 @@ class UploadCteService:
             "senha": self.senha
         }
 
+        print(payload)
         try:
             resp = await client.post(self.endpoint_login, json=payload, headers={"Content-Type": "application/json"})
             resp.raise_for_status()
