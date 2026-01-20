@@ -78,7 +78,6 @@ class TrackingService:
 
         resp = await client.post(self.endpoint, json=payload, headers=headers)
         text = resp.text
-        print(text)
         success = resp.status_code < 300
         return success, text
 
