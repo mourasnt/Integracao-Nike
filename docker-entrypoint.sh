@@ -60,7 +60,77 @@ fi
 # Roda as migrações para criar tabelas se não existirem (ou atualizar se necessário)
 if command -v alembic >/dev/null 2>&1; then
   echo "Running database migrations..."
-  alembic upgrade head
+
+  # Retry loop to make migrations resilient to transient DB errors or race conditions
+  MAX_RETRIES=${DB_MIGRATE_RETRIES:-5}
+  ATTEMPT=1
+  until alembic upgrade head; do
+    RC=$?
+    echo "alembic upgrade failed with exit code ${RC} (attempt ${ATTEMPT}/${MAX_RETRIES})"
+    if [ "${ATTEMPT}" -ge "${MAX_RETRIES}" ]; then
+      echo "Migration failed after ${ATTEMPT} attempts, aborting startup."
+      exit 1
+    fi
+    ATTEMPT=$((ATTEMPT+1))
+    sleep 2
+  done
+
+  # After successful migration, verify required columns exist (to avoid silent partial migrations)
+  REQUIRED_COLUMNS=${DB_REQUIRED_COLUMNS:-"tomador_nDoc tomador_xNome rem_xLgr dest_xLgr recebedor_nDoc et_origem"}
+  # Export to make it available to the embedded Python check
+  export DB_REQUIRED_COLUMNS="${REQUIRED_COLUMNS}"
+  ATTEMPT=1
+  until python - <<PYTHON
+import os, sys, urllib.parse, psycopg2
+
+url = os.environ.get('DATABASE_URL')
+if not url:
+    print('No DATABASE_URL set', file=sys.stderr)
+    sys.exit(1)
+
+u = urllib.parse.urlparse(url)
+user = u.username
+password = u.password
+host = u.hostname
+port = u.port or 5432
+dbname = u.path.lstrip('/')
+
+req_str = os.environ.get('DB_REQUIRED_COLUMNS', '')
+req = req_str.split() if req_str else []
+print('Post-migration: checking required columns ->', req, file=sys.stderr)
+try:
+    conn = psycopg2.connect(host=host, port=port, user=user, password=password, dbname=dbname)
+    cur = conn.cursor()
+    if not req:
+        print('No required columns configured, skipping check', file=sys.stderr)
+        cur.close()
+        conn.close()
+        sys.exit(0)
+    cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='shipments' AND column_name = ANY(%s)", (req,))
+    found = {r[0] for r in cur.fetchall()}
+    missing = [c for c in req if c not in found]
+    if missing:
+        print('Missing columns after migration:', missing, file=sys.stderr)
+        print('Found columns:', sorted(found), file=sys.stderr)
+        sys.exit(2)
+    print('All required columns present')
+    cur.close()
+    conn.close()
+    sys.exit(0)
+except Exception as e:
+    print('Error checking columns:', e, file=sys.stderr)
+    sys.exit(3)
+PYTHON
+  do
+    RC=$?
+    echo "Post-migration check failed with exit code ${RC} (attempt ${ATTEMPT}/${MAX_RETRIES})"
+    if [ "${ATTEMPT}" -ge "${MAX_RETRIES}" ]; then
+      echo "Post-migration verification failed after ${ATTEMPT} attempts, aborting startup."
+      exit 1
+    fi
+    ATTEMPT=$((ATTEMPT+1))
+    sleep 2
+  done
 fi
 
 # =================================================================================

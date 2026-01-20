@@ -63,7 +63,7 @@ async def receive_emission(payload: NotfisPayload, current_user: str = Depends(g
                 # Build Shipment from minuta using mapper utility
                 from app.utils.mappers import minuta_to_shipment_payload, nota_to_invoice_payload
 
-                shipment_payload = minuta_to_shipment_payload(item.minuta, item.rem, item.dest, item.toma, json.dumps(raw))
+                shipment_payload = minuta_to_shipment_payload(item.minuta, item.rem, item.dest, item.toma, getattr(item, 'receb', None), json.dumps(raw))
                 shipment = Shipment(**shipment_payload)
                 db.add(shipment)
                 await db.flush()

@@ -3,6 +3,14 @@ from typing import List, Optional
 from datetime import datetime
 import re
 
+class Horarios(BaseModel):
+    et_origem: Optional[datetime] = None
+    chegada_coleta: Optional[datetime] = None
+    saida_coleta: Optional[datetime] = None
+    eta_destino: Optional[datetime] = None
+    chegada_destino: Optional[datetime] = None
+    finalizacao: Optional[datetime] = None
+
 class Carga(BaseModel):
     pBru: str
     pCub: str
@@ -26,6 +34,7 @@ class MinutaHeader(BaseModel):
     cStatus: int
     cAut: str
     carga: Carga
+    horarios: Optional[Horarios] = None
     cOrigCalc: str
     cDestCalc: str
 

@@ -34,6 +34,30 @@ async def listar_cargas( current_user: str = Depends(get_current_user), db: Asyn
     cargas = res.scalars().all()
 
     def serialize(c):
+        def actor(prefix):
+            return {
+                "nDoc": getattr(c, f"{prefix}_nDoc", None),
+                "xNome": getattr(c, f"{prefix}_xNome", None),
+                "xLgr": getattr(c, f"{prefix}_xLgr", None),
+                "nro": getattr(c, f"{prefix}_nro", None),
+                "xCpl": getattr(c, f"{prefix}_xCpl", None),
+                "xBairro": getattr(c, f"{prefix}_xBairro", None),
+                "cMun": getattr(c, f"{prefix}_cMun", None),
+                "CEP": getattr(c, f"{prefix}_CEP", None),
+                "nFone": getattr(c, f"{prefix}_nFone", None),
+                "email": getattr(c, f"{prefix}_email", None),
+            }
+
+        def horarios_obj():
+            return {
+                "et_origem": c.et_origem.isoformat() if c.et_origem else None,
+                "chegada_coleta": c.chegada_coleta.isoformat() if c.chegada_coleta else None,
+                "saida_coleta": c.saida_coleta.isoformat() if c.saida_coleta else None,
+                "eta_destino": c.eta_destino.isoformat() if c.eta_destino else None,
+                "chegada_destino": c.chegada_destino.isoformat() if c.chegada_destino else None,
+                "finalizacao": c.finalizacao.isoformat() if c.finalizacao else None,
+            }
+
         return {
             "id": c.id,
             "external_ref": c.external_ref,
@@ -41,6 +65,11 @@ async def listar_cargas( current_user: str = Depends(get_current_user), db: Asyn
             "total_weight": c.total_weight,
             "total_value": float(c.total_value) if c.total_value is not None else None,
             "volumes_qty": c.volumes_qty,
+            "rem": actor('rem'),
+            "dest": actor('dest'),
+            "toma": {"nDoc": c.tomador_cnpj, "xNome": c.tomador_xNome},
+            "recebedor": actor('recebedor'),
+            "horarios": horarios_obj(),
             "invoices": [
                 {
                     "id": i.id,
@@ -63,6 +92,30 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
     if not carga:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
+    def actor_obj(prefix):
+        return {
+            "nDoc": getattr(carga, f"{prefix}_nDoc", None),
+            "xNome": getattr(carga, f"{prefix}_xNome", None),
+            "xLgr": getattr(carga, f"{prefix}_xLgr", None),
+            "nro": getattr(carga, f"{prefix}_nro", None),
+            "xCpl": getattr(carga, f"{prefix}_xCpl", None),
+            "xBairro": getattr(carga, f"{prefix}_xBairro", None),
+            "cMun": getattr(carga, f"{prefix}_cMun", None),
+            "CEP": getattr(carga, f"{prefix}_CEP", None),
+            "nFone": getattr(carga, f"{prefix}_nFone", None),
+            "email": getattr(carga, f"{prefix}_email", None),
+        }
+
+    def horarios_obj():
+        return {
+            "et_origem": carga.et_origem.isoformat() if carga.et_origem else None,
+            "chegada_coleta": carga.chegada_coleta.isoformat() if carga.chegada_coleta else None,
+            "saida_coleta": carga.saida_coleta.isoformat() if carga.saida_coleta else None,
+            "eta_destino": carga.eta_destino.isoformat() if carga.eta_destino else None,
+            "chegada_destino": carga.chegada_destino.isoformat() if carga.chegada_destino else None,
+            "finalizacao": carga.finalizacao.isoformat() if carga.finalizacao else None,
+        }
+
     return {
         "id": carga.id,
         "external_ref": carga.external_ref,
@@ -70,6 +123,11 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
         "total_weight": carga.total_weight,
         "total_value": float(carga.total_value) if carga.total_value is not None else None,
         "volumes_qty": carga.volumes_qty,
+        "rem": actor_obj('rem'),
+        "dest": actor_obj('dest'),
+        "toma": {"nDoc": carga.tomador_cnpj, "xNome": carga.tomador_xNome},
+        "recebedor": actor_obj('recebedor'),
+        "horarios": horarios_obj(),
         "invoices": [
             {
                 "id": i.id,
@@ -199,13 +257,55 @@ async def alterar_status(
                         anexos_final.append({"arquivo": {"nome": saved["url"], "dados": b64}})
                 except Exception:
                     continue
-        
+
+    # Attach recebedor into attachments payload if present
+    if len(anexos_final) > 0:
+        if recebedor_validado:
+            for i in anexos_final:
+                i["recebedor"] = recebedor_validado
+
+    # Persist recebedor on the carga when provided
+    if recebedor_validado:
+        carga.recebedor_nDoc = recebedor_validado.get('nDoc') or carga.recebedor_nDoc
+        carga.recebedor_xNome = recebedor_validado.get('xNome') or carga.recebedor_xNome
+        carga.recebedor_IE = recebedor_validado.get('IE') or carga.recebedor_IE
+        carga.recebedor_cFiscal = recebedor_validado.get('cFiscal') or carga.recebedor_cFiscal
+        carga.recebedor_xLgr = recebedor_validado.get('xLgr') or carga.recebedor_xLgr
+        carga.recebedor_nro = recebedor_validado.get('nro') or carga.recebedor_nro
+        carga.recebedor_xCpl = recebedor_validado.get('xCpl') or carga.recebedor_xCpl
+        carga.recebedor_xBairro = recebedor_validado.get('xBairro') or carga.recebedor_xBairro
+        carga.recebedor_cMun = recebedor_validado.get('cMun') or carga.recebedor_cMun
+        carga.recebedor_CEP = recebedor_validado.get('CEP') or carga.recebedor_CEP
+        carga.recebedor_cPais = recebedor_validado.get('cPais') or carga.recebedor_cPais
+        carga.recebedor_nFone = recebedor_validado.get('nFone') or carga.recebedor_nFone
+        carga.recebedor_email = recebedor_validado.get('email') or carga.recebedor_email
+
     await commit_or_raise(db)
     await db.refresh(carga)
 
     # Envia tracking
     tv = TrackingService()  # uses env vars if not provided
     results = []
+
+    # If recebedor not provided in request, fallback to persisted recebedor on the carga
+    if not recebedor_validado:
+        db_r = {
+            "nDoc": carga.recebedor_nDoc,
+            "xNome": carga.recebedor_xNome,
+            "IE": carga.recebedor_IE,
+            "cFiscal": carga.recebedor_cFiscal,
+            "xLgr": carga.recebedor_xLgr,
+            "nro": carga.recebedor_nro,
+            "xCpl": carga.recebedor_xCpl,
+            "xBairro": carga.recebedor_xBairro,
+            "cMun": carga.recebedor_cMun,
+            "CEP": carga.recebedor_CEP,
+            "cPais": carga.recebedor_cPais,
+            "nFone": carga.recebedor_nFone,
+            "email": carga.recebedor_email,
+        }
+        if db_r.get("nDoc") or db_r.get("xNome"):
+            recebedor_validado = db_r
 
     success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final, recebedor=recebedor_validado)
     results.append({"cte": str(carga.id), "ok": success, "vblog_response": resp_text[:500]})

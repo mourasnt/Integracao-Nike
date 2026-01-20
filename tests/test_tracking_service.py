@@ -37,3 +37,13 @@ async def test_enviar_uses_client(monkeypatch):
     success, text = await svc.enviar("3524CHAVE", "10")
     assert success is True
     assert "OK" in text
+
+
+@pytest.mark.asyncio
+async def test_montar_payload_includes_recebedor():
+    svc = TrackingService()
+    r = {"nDoc": "111", "xNome": "Recebedor"}
+    payload = svc.montar_payload("3524CHAVE", "10", recebedor=r)
+    doc = payload["documentos"][0]
+    assert "recebedor" in doc["eventos"][0]
+    assert doc["eventos"][0]["recebedor"]["nDoc"] == "111"

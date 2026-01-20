@@ -1,5 +1,6 @@
-from pydantic import BaseModel, field_validator, model_validator
-from typing import Optional
+from pydantic import BaseModel, field_validator, model_validator, EmailStr
+from typing import Optional, List
+from datetime import datetime
 from app.services.constants import VALID_CODES
 
 
@@ -23,3 +24,43 @@ class ShipmentStatus(BaseModel):
             if not self.type:
                 self.type = info.get("type")
         return self
+
+
+class ActorOut(BaseModel):
+    nDoc: Optional[str] = None
+    IE: Optional[str] = None
+    cFiscal: Optional[int] = None
+    xNome: Optional[str] = None
+    xFant: Optional[str] = None
+    xLgr: Optional[str] = None
+    nro: Optional[str] = None
+    xCpl: Optional[str] = None
+    xBairro: Optional[str] = None
+    cMun: Optional[str] = None
+    CEP: Optional[str] = None
+    cPais: Optional[int] = None
+    nFone: Optional[str] = None
+    email: Optional[EmailStr] = None
+
+
+class HorariosOut(BaseModel):
+    et_origem: Optional[datetime] = None
+    chegada_coleta: Optional[datetime] = None
+    saida_coleta: Optional[datetime] = None
+    eta_destino: Optional[datetime] = None
+    chegada_destino: Optional[datetime] = None
+    finalizacao: Optional[datetime] = None
+
+
+class ShipmentRead(BaseModel):
+    id: int
+    external_ref: Optional[str] = None
+    service_code: Optional[str] = None
+    total_weight: Optional[float] = None
+    total_value: Optional[float] = None
+    volumes_qty: Optional[int] = None
+    rem: Optional[ActorOut] = None
+    dest: Optional[ActorOut] = None
+    recebedor: Optional[ActorOut] = None
+    toma: Optional[ActorOut] = None
+    horarios: Optional[HorariosOut] = None
