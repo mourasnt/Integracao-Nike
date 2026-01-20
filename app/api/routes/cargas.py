@@ -212,7 +212,7 @@ async def alterar_status(
     tv = TrackingService()  # uses env vars if not provided
     results = []
 
-    success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final, recebedor=recebedor_validado)
+    success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final)
     results.append({"cte": str(carga.id), "ok": success, "vblog_response": resp_text[:500]})
 
     # registrar tracking interno
