@@ -179,6 +179,11 @@ async def alterar_status(
                 except Exception:
                     continue
 
+    if anexos_final.length > 0:
+        if recebedor:
+            for i in anexos_final:
+                i["recebedor"] = recebedor
+        
     await commit_or_raise(db)
     await db.refresh(carga)
 
