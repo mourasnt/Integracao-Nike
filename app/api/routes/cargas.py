@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body, File, UploadFile, Form, status
+from fastapi import APIRouter, Depends, HTTPException, Body, File, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -11,6 +11,15 @@ from typing import Optional, Any
 from pathlib import Path
 import datetime
 from fastapi import Request
+from app.services.upload_cte_service import UploadCteService, BrudamError
+import base64
+import xml.etree.ElementTree as ET
+import re
+from app.utils.db_utils import commit_or_raise
+from app.services.attachments_service import AttachmentService
+import base64
+import httpx
+import json
 
 router = APIRouter(prefix="/cargas")
 
@@ -99,8 +108,6 @@ async def alterar_status(
     except Exception:
         anexos_input = None
 
-    import json
-
     code_val = None
 
     if isinstance(novo_status, (str, int)):
@@ -139,11 +146,6 @@ async def alterar_status(
         # nada a enviar (ex.: PENDENTE ou status sem mapeamento)
         return {"status": "ok", "codigo_enviado": None}
 
-    # Process attachments (single file `anexo` and JSON `anexos` if provided)
-    from app.services.attachments_service import AttachmentService
-    import base64
-    import httpx
-
     attachment_svc = AttachmentService()
 
     anexos_final = []
@@ -176,8 +178,6 @@ async def alterar_status(
                 except Exception:
                     continue
 
-    # Atualiza status interno
-    from app.utils.db_utils import commit_or_raise
     await commit_or_raise(db)
     await db.refresh(carga)
 
@@ -218,9 +218,6 @@ async def upload_xml(
 
     xmls_b64 = []
     found_chaves = []
-    import base64
-    import xml.etree.ElementTree as ET
-    import re
 
     def extract_chave_from_cte_bytes(content_bytes: bytes) -> Optional[str]:
         try:
@@ -266,7 +263,6 @@ async def upload_xml(
     db.add(invoice)
     await db.commit()
 
-    from app.services.upload_cte_service import UploadCteService, BrudamError
     upload_svc = UploadCteService()
 
     try:
