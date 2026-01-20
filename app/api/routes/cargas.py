@@ -190,7 +190,7 @@ async def alterar_status(
     if anexos_final.length > 0:
         if recebedor_validado:
             for i in anexos_final:
-                i["recebedor"] = json.loads(recebedor)
+                i["recebedor"] = recebedor_validado
         
     await commit_or_raise(db)
     await db.refresh(carga)
