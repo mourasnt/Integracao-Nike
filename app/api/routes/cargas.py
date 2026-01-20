@@ -7,7 +7,7 @@ from app.models.shipment import Shipment, ShipmentInvoice
 from app.services.constants import VALID_CODES, VALID_CODES_SET
 from app.services.tracking_service import TrackingService
 from app.api.deps.security import get_current_user
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 from pathlib import Path
 import datetime
 from fastapi import Request
@@ -88,7 +88,7 @@ async def alterar_status(
         description="Código do novo status (ex: {\"code\": \"1\"} ou \"1\")",
     ),
     anexo: Optional[UploadFile] = File(None),
-    recebedor: Optional[dict] = None,
+    recebedor: Optional[Dict[str]] = None,
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
