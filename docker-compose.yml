@@ -26,7 +26,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://admin_api:dUiZBmHsbLWG2HiV4zx3eFYn0W7hpyQ2xhdRI5v3U49cWV9kkIW@db:5432/logistica_db
       PYTHONPATH: /code
-      SECRET_KEY: $2a$12$xVtfI/pePb.krohfumSDBedzcOF/bEaKDOsTcdqYDTIY.fk8FOIqe
+      SECRET_KEY: 2a12xVtfIpePbkrohfumSDBedzcOFbEaKDOsTcdqYDTIYfk8FOIqe
       ACCESS_TOKEN_EXPIRE_MINUTES: '120'
       JWT_ALGORITHM: HS256
       INITIAL_USER: integracao_logistica
