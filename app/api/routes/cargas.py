@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body, File, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Body, File, UploadFile, Form, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -88,7 +88,7 @@ async def alterar_status(
         description="Código do novo status (ex: {\"code\": \"1\"} ou \"1\")",
     ),
     anexo: Optional[UploadFile] = File(None),
-    recebedor: Optional[Dict[str, Any]] = None,
+    recebedor: Optional[str] = Form(None),
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -113,11 +113,24 @@ async def alterar_status(
 
     recebedor_validado = None
 
-    if recebedor:
-        if isinstance(recebedor, str):
-            recebedor_validado = json.loads(recebedor)
-        if isinstance(recebedor_validado, str):
-            recebedor_validado = json.loads(recebedor_validado)
+    # Support `recebedor` from either a form field (multipart/form-data) as a JSON string
+    # or from an application/json body where `recebedor` can be a dict or JSON string.
+    recebedor_input = recebedor
+    if request is not None and request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            body = await request.json()
+            if isinstance(body, dict) and "recebedor" in body:
+                recebedor_input = body.get("recebedor")
+        except Exception:
+            pass
+
+    if isinstance(recebedor_input, dict):
+        recebedor_validado = recebedor_input
+    elif isinstance(recebedor_input, str):
+        try:
+            recebedor_validado = json.loads(recebedor_input)
+        except Exception:
+            recebedor_validado = None
 
     if isinstance(novo_status, (str, int)):
         s = str(novo_status).strip()
@@ -187,7 +200,7 @@ async def alterar_status(
                 except Exception:
                     continue
 
-    if anexos_final.length > 0:
+    if len(anexos_final) > 0:
         if recebedor_validado:
             for i in anexos_final:
                 i["recebedor"] = recebedor_validado
@@ -199,7 +212,7 @@ async def alterar_status(
     tv = TrackingService()  # uses env vars if not provided
     results = []
 
-    success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final, recebedor=recebedor)
+    success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final, recebedor=recebedor_validado)
     results.append({"cte": str(carga.id), "ok": success, "vblog_response": resp_text[:500]})
 
     # registrar tracking interno
