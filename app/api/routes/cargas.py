@@ -145,6 +145,7 @@ async def alterar_status(
         None,
         description="Código do novo status (ex: {\"code\": \"1\"} ou \"1\")",
     ),
+    current_user: str = Depends(get_current_user),
     anexo: Optional[UploadFile] = File(None),
     recebedor: Optional[str] = Form(None),
     request: Request = None,
