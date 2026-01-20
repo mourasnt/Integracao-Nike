@@ -31,6 +31,7 @@ class TrackingService:
         obs: Optional[str] = None,
         tipo: str = "NFE",
         anexos: Optional[list] = None,
+        recebedor: Optional[list] = None,
     ) -> dict:
 
         # permissive validation
@@ -52,6 +53,9 @@ class TrackingService:
         if anexos:
             documento["anexos"] = anexos
 
+        if recebedor:
+            documento["recebedor"] = recebedor
+
         return {"auth": {"usuario": self.usuario, "senha": self.senha}, "documentos": [documento]}
 
     async def enviar(
@@ -62,6 +66,7 @@ class TrackingService:
         obs: Optional[str] = None,
         tipo: str = "NFE",
         anexos: Optional[list] = None,
+        recebedor: Optional[list] = None,
     ) -> Tuple[bool, str]:
 
         payload = self.montar_payload(
@@ -71,6 +76,7 @@ class TrackingService:
             obs=obs,
             tipo=tipo,
             anexos=anexos,
+            recebedor=recebedor
         )
 
         client = await self._get_client()
