@@ -88,7 +88,7 @@ async def alterar_status(
         description="Código do novo status (ex: {\"code\": \"1\"} ou \"1\")",
     ),
     anexo: Optional[UploadFile] = File(None),
-    recebedor: Optional[list] = None,
+    recebedor: Optional[any] = None,
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -101,16 +101,13 @@ async def alterar_status(
         raise HTTPException(404, "Carga não encontrada")
 
     anexos_input = None
-    recebedor_input = None
     try:
         if request is not None and request.headers.get("content-type", "").startswith("application/json"):
             body = await request.json()
             if isinstance(body, dict):
                 anexos_input = body.get("anexos")
-                recebedor_input = body.get("recebedor")
     except Exception:
         anexos_input = None
-        recebedor_input = None
 
     code_val = None
 
@@ -189,7 +186,7 @@ async def alterar_status(
     tv = TrackingService()  # uses env vars if not provided
     results = []
 
-    success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final, recebedor=recebedor_input)
+    success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final, recebedor=recebedor)
     results.append({"cte": str(carga.id), "ok": success, "vblog_response": resp_text[:500]})
 
     # registrar tracking interno
