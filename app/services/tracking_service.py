@@ -31,6 +31,7 @@ class TrackingService:
         obs: Optional[str] = None,
         tipo: str = "NFE",
         anexos: Optional[list] = None,
+        recebedor: Optional[dict] = None,
     ) -> dict:
 
         # permissive validation
@@ -45,6 +46,7 @@ class TrackingService:
                     "codigo": int(codigo_evento),
                     "data": data_fmt,
                     "obs": obs or (VALID_CODES.get(codigo_evento, {}).get("message") if VALID_CODES else None),
+                    **({"recebedor": recebedor} if recebedor else {})
                 }
             ],
         }
@@ -62,6 +64,7 @@ class TrackingService:
         obs: Optional[str] = None,
         tipo: str = "NFE",
         anexos: Optional[list] = None,
+        recebedor: Optional[dict] = None,
     ) -> Tuple[bool, str]:
 
         payload = self.montar_payload(
@@ -71,6 +74,7 @@ class TrackingService:
             obs=obs,
             tipo=tipo,
             anexos=anexos,
+            recebedor=recebedor,
         )
 
         client = await self._get_client()

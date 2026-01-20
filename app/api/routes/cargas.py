@@ -199,11 +199,6 @@ async def alterar_status(
                         anexos_final.append({"arquivo": {"nome": saved["url"], "dados": b64}})
                 except Exception:
                     continue
-
-    if len(anexos_final) > 0:
-        if recebedor_validado:
-            for i in anexos_final:
-                i["recebedor"] = recebedor_validado
         
     await commit_or_raise(db)
     await db.refresh(carga)
@@ -212,7 +207,7 @@ async def alterar_status(
     tv = TrackingService()  # uses env vars if not provided
     results = []
 
-    success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final)
+    success, resp_text = await tv.enviar(carga.access_key, code_to_send, anexos=anexos_final, recebedor=recebedor_validado)
     results.append({"cte": str(carga.id), "ok": success, "vblog_response": resp_text[:500]})
 
     # registrar tracking interno
