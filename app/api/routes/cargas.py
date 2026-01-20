@@ -111,6 +111,14 @@ async def alterar_status(
 
     code_val = None
 
+    recebedor_validado = None
+
+    if recebedor:
+        if isinstance(recebedor, str):
+            recebedor_validado = json.loads(recebedor)
+        if isinstance(recebedor_validado, str):
+            recebedor_validado = json.loads(recebedor_validado)
+
     if isinstance(novo_status, (str, int)):
         s = str(novo_status).strip()
         if s.startswith("{") or s.startswith("["):
@@ -180,7 +188,7 @@ async def alterar_status(
                     continue
 
     if anexos_final.length > 0:
-        if recebedor:
+        if recebedor_validado:
             for i in anexos_final:
                 i["recebedor"] = json.loads(recebedor)
         
