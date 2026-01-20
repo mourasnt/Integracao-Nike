@@ -88,7 +88,7 @@ async def alterar_status(
         description="Código do novo status (ex: {\"code\": \"1\"} ou \"1\")",
     ),
     anexo: Optional[UploadFile] = File(None),
-    recebedor: Optional[Dict[str]] = None,
+    recebedor: Dict[str] = None,
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
