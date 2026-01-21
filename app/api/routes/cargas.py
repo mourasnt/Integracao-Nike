@@ -311,7 +311,7 @@ async def alterar_status(
     except Exception:
         recebedor_validado = None
 
-    remetente_validado = carga.get("rem_nDoc") if carga.get("rem_nDoc") else carga.get("rem").get("nDoc")
+    remetente_validado = carga.rem_nDoc if carga.rem_nDoc else carga.rem.nDoc
 
     success, resp_text = await tv.enviar(chave_documento=carga.access_key, codigo_evento=code_to_send, anexos=anexos_final, recebedor=recebedor_validado, remetente_cnpj=remetente_validado)
     results.append({"cte": str(carga.id), "ok": success, "vblog_response": resp_text[:500]})
