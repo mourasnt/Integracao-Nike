@@ -1,5 +1,6 @@
 from typing import Optional
 from sqlalchemy import Column, Integer, String, DateTime, Float, Numeric, Text, ForeignKey, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db import Base
@@ -50,6 +51,35 @@ class Shipment(Base):
     rem_cPais = Column(Integer, nullable=True)
     rem_nFone = Column(String(30), nullable=True)
     rem_email = Column(String(255), nullable=True)
+
+    # Normalized location values (IBGE codes + UF sigla + municipality name)
+    rem_uf = Column(String(length=2), nullable=True)
+    rem_estado_codigo_ibge = Column(Integer, nullable=True)
+    rem_municipio_codigo_ibge = Column(Integer, nullable=True)
+    rem_municipio_nome = Column(String(255), nullable=True)
+
+    # Destinatario normalized locations
+    dest_uf = Column(String(length=2), nullable=True)
+    dest_estado_codigo_ibge = Column(Integer, nullable=True)
+    dest_municipio_codigo_ibge = Column(Integer, nullable=True)
+    dest_municipio_nome = Column(String(255), nullable=True)
+
+    # Recebedor normalized locations (local de entrega)
+    recebedor_uf = Column(String(length=2), nullable=True)
+    recebedor_estado_codigo_ibge = Column(Integer, nullable=True)
+    recebedor_municipio_codigo_ibge = Column(Integer, nullable=True)
+    recebedor_municipio_nome = Column(String(255), nullable=True)
+
+    # Origem / Destino (c_orig_calc / c_dest_calc) normalized
+    origem_uf = Column(String(length=2), nullable=True)
+    origem_estado_codigo_ibge = Column(Integer, nullable=True)
+    origem_municipio_codigo_ibge = Column(Integer, nullable=True)
+    origem_municipio_nome = Column(String(255), nullable=True)
+
+    destino_uf = Column(String(length=2), nullable=True)
+    destino_estado_codigo_ibge = Column(Integer, nullable=True)
+    destino_municipio_codigo_ibge = Column(Integer, nullable=True)
+    destino_municipio_nome = Column(String(255), nullable=True)
 
     # Destinatario
     dest_nDoc = Column(String(20), nullable=True, index=True)

@@ -5,6 +5,7 @@ from app.db import get_db
 from app.schemas.notfis import NotfisPayload
 from app.models.shipment import Shipment, ShipmentInvoice
 from app.api.deps.security import get_current_user
+from app.services.localidades_service import LocalidadesService
 import json
 from loguru import logger
 
@@ -67,6 +68,13 @@ async def receive_emission(payload: NotfisPayload, current_user: str = Depends(g
                 shipment = Shipment(**shipment_payload)
                 db.add(shipment)
                 await db.flush()
+
+                # Normalize and store locations (UF + municipio/state UUIDs)
+                try:
+                    await LocalidadesService.set_shipment_locations(db, shipment)
+                except Exception as e:
+                    # Best-effort: log and continue
+                    logger.warning("Failed to set shipment locations: %s", e)
 
                 for nf_idx, nf in enumerate(item.documentos):
                     logger.debug("Processing nota index=%d for minuta index=%d", nf_idx, idx)
