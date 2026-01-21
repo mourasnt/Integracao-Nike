@@ -15,7 +15,6 @@ class TrackingService:
         self.usuario = os.getenv("BRUDAM_USUARIO")
         self.senha = os.getenv("BRUDAM_SENHA")
         self.endpoint = os.getenv("BRUDAM_URL_TRACKING")
-        self.cliente = os.getenv("BRUDAM_CLIENTE")
         self._client = client
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -32,13 +31,14 @@ class TrackingService:
         tipo: str = "NFE",
         anexos: Optional[list] = None,
         recebedor: Optional[dict] = None,
+        remetente_cnpj: str = None,
     ) -> dict:
 
         # permissive validation
         data_fmt = (data_evento or datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
 
         documento = {
-            "cliente": self.cliente,
+            "cliente": remetente_cnpj,
             "tipo": tipo if tipo else "PEDIDO",
             "chave": chave_documento,
             "eventos": [
@@ -65,6 +65,7 @@ class TrackingService:
         tipo: str = "NFE",
         anexos: Optional[list] = None,
         recebedor: Optional[dict] = None,
+        remetente_cnpj: str = None,
     ) -> Tuple[bool, str]:
 
         payload = self.montar_payload(
@@ -75,6 +76,7 @@ class TrackingService:
             tipo=tipo,
             anexos=anexos,
             recebedor=recebedor,
+            remetente_cnpj=remetente_cnpj,
         )
 
         client = await self._get_client()
