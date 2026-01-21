@@ -20,6 +20,7 @@ from app.services.attachments_service import AttachmentService
 import base64
 import httpx
 import json
+from loguru import logger
 
 router = APIRouter(prefix="/cargas")
 
@@ -32,6 +33,14 @@ async def listar_cargas( current_user: str = Depends(get_current_user), db: Asyn
     q = select(Shipment).options(selectinload(Shipment.invoices))
     res = await db.execute(q)
     cargas = res.scalars().all()
+
+    # Diagnostic logging: calling user, number of shipments found and their ids
+    logger.debug("listar_cargas called by user=%s", current_user)
+    try:
+        ids = [c.id for c in cargas]
+    except Exception:
+        ids = None
+    logger.debug("listar_cargas: found %d cargas (ids=%s)", len(cargas), ids)
 
     def serialize(c):
         def actor(prefix):
@@ -46,6 +55,10 @@ async def listar_cargas( current_user: str = Depends(get_current_user), db: Asyn
                 "CEP": getattr(c, f"{prefix}_CEP", None),
                 "nFone": getattr(c, f"{prefix}_nFone", None),
                 "email": getattr(c, f"{prefix}_email", None),
+                # Normalized fields
+                "UF": getattr(c, f"{prefix}_uf", None),
+                "municipioCodigoIbge": getattr(c, f"{prefix}_municipio_codigo_ibge", None),
+                "municipioNome": getattr(c, f"{prefix}_municipio_nome", None),
             }
 
         def horarios_obj():
@@ -81,7 +94,8 @@ async def listar_cargas( current_user: str = Depends(get_current_user), db: Asyn
             ]
         }
 
-    print(current_user)
+    # remove stray prints; log current user and return list
+    logger.debug("listar_cargas returning %d cargas for user=%s", len(cargas), current_user)
     return [serialize(c) for c in cargas]
 
 
@@ -91,7 +105,10 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
     res = await db.execute(q)
     carga = res.scalars().first()
     if not carga:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        logger.debug("obter_carga: carga id=%s not found (user=%s)", carga_id, current_user)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carga não encontrada")
+
+    logger.debug("obter_carga: user=%s retrieved carga id=%s", current_user, carga.id)
 
     def actor_obj(prefix):
         return {
@@ -129,6 +146,16 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
         "toma": {"nDoc": carga.tomador_cnpj, "xNome": carga.tomador_xNome},
         "recebedor": actor_obj('recebedor'),
         "horarios": horarios_obj(),
+        "origem": {
+            "UF": getattr(carga, 'origem_uf', None),
+            "municipioCodigoIbge": getattr(carga, 'origem_municipio_codigo_ibge', None),
+            "municipioNome": getattr(carga, 'origem_municipio_nome', None),
+        },
+        "destino": {
+            "UF": getattr(carga, 'destino_uf', None),
+            "municipioCodigoIbge": getattr(carga, 'destino_municipio_codigo_ibge', None),
+            "municipioNome": getattr(carga, 'destino_municipio_nome', None),
+        },
         "invoices": [
             {
                 "id": i.id,

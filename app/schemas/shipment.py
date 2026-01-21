@@ -1,4 +1,12 @@
-from pydantic import BaseModel, field_validator, model_validator, EmailStr
+from pydantic import BaseModel, field_validator, model_validator
+
+# EmailStr optionally requires the "email-validator" package. Provide a safe
+# fallback (str) when the package is not installed so tests and environments
+# without that optional dependency still import successfully.
+try:
+    from pydantic import EmailStr  # type: ignore
+except Exception:
+    EmailStr = str  # type: ignore
 from typing import Optional, List
 from datetime import datetime
 from app.services.constants import VALID_CODES
@@ -40,7 +48,12 @@ class ActorOut(BaseModel):
     CEP: Optional[str] = None
     cPais: Optional[int] = None
     nFone: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
+
+    # Normalized location fields
+    UF: Optional[str] = None
+    municipioCodigoIbge: Optional[int] = None
+    municipioNome: Optional[str] = None
 
 
 class HorariosOut(BaseModel):
@@ -50,6 +63,12 @@ class HorariosOut(BaseModel):
     eta_destino: Optional[datetime] = None
     chegada_destino: Optional[datetime] = None
     finalizacao: Optional[datetime] = None
+
+
+class LocationOut(BaseModel):
+    UF: Optional[str] = None
+    municipioCodigoIbge: Optional[int] = None
+    municipioNome: Optional[str] = None
 
 
 class ShipmentRead(BaseModel):
@@ -64,3 +83,5 @@ class ShipmentRead(BaseModel):
     recebedor: Optional[ActorOut] = None
     toma: Optional[ActorOut] = None
     horarios: Optional[HorariosOut] = None
+    origem: Optional[LocationOut] = None
+    destino: Optional[LocationOut] = None

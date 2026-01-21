@@ -1,4 +1,12 @@
-from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+# EmailStr optionally requires the "email-validator" package. Provide a safe
+# fallback (str) when the package is not installed so tests and environments
+# without that optional dependency still import successfully.
+try:
+    from pydantic import EmailStr  # type: ignore
+except Exception:
+    EmailStr = str  # type: ignore
 from typing import List, Optional
 from datetime import datetime
 import re
@@ -77,7 +85,7 @@ class Actor(BaseModel):
     CEP: str
     cPais: int
     nFone: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
 
     @field_validator('nDoc')
     def validate_nDoc(cls, v):
@@ -95,6 +103,16 @@ class Actor(BaseModel):
     def non_empty_actor_fields(cls, v):
         if v is None or (isinstance(v, str) and v.strip() == ''):
             raise ValueError('Campo de ator obrigatório não pode ser vazio')
+        return v
+
+    @field_validator('email')
+    def validate_email_optional(cls, v):
+        # Accept empty or missing email; basic sanity check when present
+        if v is None or (isinstance(v, str) and v.strip() == ''):
+            return None
+        # Very permissive check: ensure there's an '@' when provided
+        if isinstance(v, str) and '@' not in v:
+            raise ValueError('email inválido')
         return v
 
 class NotaFiscalItem(BaseModel):

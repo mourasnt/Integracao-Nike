@@ -65,41 +65,50 @@ async def receive_emission(payload: NotfisPayload, current_user: str = Depends(g
                 from app.utils.mappers import minuta_to_shipment_payload, nota_to_invoice_payload
 
                 shipment_payload = minuta_to_shipment_payload(item.minuta, item.rem, item.dest, item.toma, getattr(item, 'receb', None), json.dumps(raw))
-                shipment = Shipment(**shipment_payload)
-                db.add(shipment)
-                await db.flush()
+                # Use a transaction per minuta to ensure failures rollback only this minuta and
+                # do not leave the session in an aborted state for subsequent operations.
+                async with db.begin():
+                    shipment = Shipment(**shipment_payload)
+                    db.add(shipment)
+                    await db.flush()
 
-                # Normalize and store locations (UF + municipio/state UUIDs)
-                try:
-                    await LocalidadesService.set_shipment_locations(db, shipment)
-                except Exception as e:
-                    # Best-effort: log and continue
-                    logger.warning("Failed to set shipment locations: %s", e)
+                    # Normalize and store locations (UF + municipio/state UUIDs) using a nested savepoint
+                    try:
+                        async with db.begin_nested():
+                            await LocalidadesService.set_shipment_locations(db, shipment)
+                    except Exception as e:
+                        # Best-effort: log and continue; nested savepoint will be rolled back
+                        logger.warning("Failed to set shipment locations (savepoint rolled back): %s", e)
 
-                for nf_idx, nf in enumerate(item.documentos):
-                    logger.debug("Processing nota index=%d for minuta index=%d", nf_idx, idx)
-                    if not getattr(nf, "nDoc", None):
-                        raise ValueError("Campo obrigatório 'nDoc' não informado")
-                    if not getattr(nf, "chave", None) or (nf.chave and len(nf.chave) != 44):
-                        raise ValueError("Campo 'chave' inválido (deve ter 44 caracteres)")
+                    invoice_failures = 0
+                    for nf_idx, nf in enumerate(item.documentos):
+                        logger.debug("Processing nota index=%d for minuta index=%d", nf_idx, idx)
+                        if not getattr(nf, "nDoc", None):
+                            raise ValueError("Campo obrigatório 'nDoc' não informado")
+                        if not getattr(nf, "chave", None) or (nf.chave and len(nf.chave) != 44):
+                            raise ValueError("Campo 'chave' inválido (deve ter 44 caracteres)")
 
-                    invoice_payload = nota_to_invoice_payload(nf, shipment_id=shipment.id)
-                    invoice = ShipmentInvoice(**invoice_payload)
-                    # Ensure invoice-level remetente ndoc is populated; fallback to shipment.rem_nDoc
-                    invoice.remetente_ndoc = invoice_payload.get('remetente_ndoc') or shipment.rem_nDoc
-                    db.add(invoice) 
+                        try:
+                            # Use a nested savepoint per-invoice so a DB error on one invoice does
+                            # not abort the entire minuta transaction.
+                            async with db.begin_nested():
+                                invoice_payload = nota_to_invoice_payload(nf, shipment_id=shipment.id)
+                                invoice = ShipmentInvoice(**invoice_payload)
+                                # Ensure invoice-level remetente ndoc is populated; fallback to shipment.rem_nDoc
+                                invoice.remetente_ndoc = invoice_payload.get('remetente_ndoc') or shipment.rem_nDoc
+                                db.add(invoice)
+                        except Exception as e:
+                            invoice_failures += 1
+                            logger.exception("Failed to persist invoice index=%d for shipment id=%s: %s", nf_idx, getattr(shipment, 'id', None), e)
+                            # continue processing other invoices
+                            continue
 
-                try:
-                    from app.utils.db_utils import commit_or_raise
-                    await commit_or_raise(db)
-                    response_data.append({"status": 1, "message": "Importação realizada com sucesso", "id": shipment.id})
-                except Exception as e:
-                    await db.rollback()
-                    global_status = 0
-                    global_message = "Houve erros no processamento"
-                    logger.exception("Erro ao commitar minuta (shipment id may be None): %s", e)
-                    # Provide a concise message back to the client
-                    response_data.append({"status": 0, "message": f"Erro durante commit: {e.__class__.__name__}: {str(e)}", "id": None})
+                # If we reach here the async with db.begin() committed successfully
+                if invoice_failures:
+                    msg = f"Importação realizada com sucesso (algumas notas falharam: {invoice_failures})"
+                else:
+                    msg = "Importação realizada com sucesso"
+                response_data.append({"status": 1, "message": msg, "id": shipment.id})
             except Exception as e:
                 await db.rollback()
                 global_status = 0

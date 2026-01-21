@@ -1,6 +1,6 @@
 """replace location uuids with ibge codes and names
 
-Revision ID: 0010_replace_location_uuids_with_codes
+Revision ID: 0010_replace_location_codes
 Revises: 0009_add_location_uuids
 Create Date: 2026-01-21 00:00:00.000000
 """
@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '0010_replace_location_uuids_with_codes'
+revision = '0010_replace_location_codes'
 down_revision = '0009_add_location_uuids'
 branch_labels = None
 depends_on = None

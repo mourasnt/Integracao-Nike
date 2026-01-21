@@ -44,8 +44,11 @@ def upgrade():
             try:
                 op.execute("ALTER TABLE shipment_invoices ADD COLUMN IF NOT EXISTS remetente_ndoc VARCHAR(100)")
             except Exception:
-                op.add_column('shipment_invoices', sa.Column('remetente_ndoc', sa.String(length=100), nullable=True))
-        else:
+                # fallback handled below
+                pass
+
+        # Re-check to avoid attempting to add a column that already exists
+        if not _column_exists(inspector, 'shipment_invoices', 'remetente_ndoc'):
             op.add_column('shipment_invoices', sa.Column('remetente_ndoc', sa.String(length=100), nullable=True))
 
     # Create index if not exists

@@ -1,7 +1,7 @@
 """create localidades tables
 
 Revision ID: 0008_create_localidades_tables
-Revises: 0007_add_remetente_ndoc_to_shipment_invoices
+Revises: 0007_add_remetente_ndoc
 Create Date: 2026-01-21 00:00:00.000000
 """
 from alembic import op

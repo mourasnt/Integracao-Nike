@@ -34,8 +34,16 @@ def upgrade():
             try:
                 op.execute("ALTER TABLE shipment_invoices ADD COLUMN IF NOT EXISTS xmls_b64 JSON")
             except Exception:
-                op.add_column('shipment_invoices', sa.Column('xmls_b64', sa.JSON(), nullable=True))
-        else:
+                # fall through to ensure the column exists using SQLAlchemy helper
+                pass
+
+        # Re-check; if still missing, add via SQLAlchemy API (idempotent fallback)
+        try:
+            current_cols = [c['name'] for c in inspector.get_columns('shipment_invoices')]
+        except Exception:
+            current_cols = existing_cols
+
+        if 'xmls_b64' not in current_cols:
             op.add_column('shipment_invoices', sa.Column('xmls_b64', sa.JSON(), nullable=True))
 
 
