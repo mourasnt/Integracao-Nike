@@ -37,11 +37,15 @@ class TrackingService:
         # permissive validation
         data_fmt = (data_evento or datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
 
+        # Normalize remetente_cnpj: strip whitespace and convert empty string to None
+        if isinstance(remetente_cnpj, str):
+            remetente_cnpj = remetente_cnpj.strip() or None
+
         documento = {
             "cliente": remetente_cnpj,
             "tipo": tipo if tipo else "PEDIDO",
             "chave": chave_documento,
-            "eventos": [
+            "eventos": [ 
                 {
                     "codigo": int(codigo_evento),
                     "data": data_fmt,

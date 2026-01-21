@@ -237,6 +237,21 @@ def test_emissao_happy_path(headers, golden_payload):
     assert data['data'][0]['status'] == 1
     assert isinstance(data['data'][0]['id'], int)
 
+
+def test_emissao_sets_invoice_remetente_ndoc(headers, golden_payload):
+    # Ensure rem.nDoc is present in the payload and persisted on invoice
+    golden_payload['documentos'][0]['rem']['nDoc'] = '11111111000111'
+    resp = requests.post(EMISSAO_URL, json=golden_payload, headers=headers)
+    assert resp.status_code in [200,201]
+
+    # List cargas and check invoices include remetente_ndoc
+    resp2 = requests.get(BASE_URL + '/cargas', headers=headers)
+    assert resp2.status_code == 200
+    cargas = resp2.json()
+    assert len(cargas) > 0
+    invs = cargas[0]['invoices']
+    assert invs and invs[0].get('remetente_ndoc') == '11111111000111' 
+
 # --- GERADOR DE CENÁRIOS DE ERRO ---
 
 def gerar_cenarios_campos():

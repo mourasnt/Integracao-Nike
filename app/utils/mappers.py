@@ -98,6 +98,14 @@ def minuta_to_shipment_payload(minuta, rem, dest, toma, receb, raw_payload: str)
 
 
 def nota_to_invoice_payload(nf, shipment_id: Optional[int] = None) -> dict:
+    # Attempt to extract remetente nDoc from nota payload (robust to different shapes)
+    remetente_ndoc = None
+    nf_rem = _safe_get(nf, "rem") or _safe_get(nf, "remetente")
+    if isinstance(nf_rem, dict):
+        remetente_ndoc = nf_rem.get("nDoc")
+    elif hasattr(nf_rem, "nDoc"):
+        remetente_ndoc = getattr(nf_rem, "nDoc")
+
     payload = {
         "shipment_id": shipment_id,
         "n_ped": _safe_get(nf, "nPed"),
@@ -118,6 +126,7 @@ def nota_to_invoice_payload(nf, shipment_id: Optional[int] = None) -> dict:
         "x_esp": _safe_get(nf, "xEsp"),
         "x_nat": _safe_get(nf, "xNat"),
         "cte_chave": (_safe_get(nf, "cte", {}) or {}).get("Chave") if _safe_get(nf, "cte") else None,
+        "remetente_ndoc": remetente_ndoc,
     }
 
-    return {k: v for k, v in payload.items()}
+    return {k: v for k, v in payload.items()} 

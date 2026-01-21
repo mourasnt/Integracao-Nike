@@ -74,7 +74,8 @@ async def listar_cargas( current_user: str = Depends(get_current_user), db: Asyn
                 {
                     "id": i.id,
                     "access_key": i.access_key,
-                    "cte_chave": i.cte_chave
+                    "cte_chave": i.cte_chave,
+                    "remetente_ndoc": i.remetente_ndoc
                 }
                 for i in c.invoices
             ]
@@ -132,7 +133,8 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
             {
                 "id": i.id,
                 "access_key": i.access_key,
-                "cte_chave": i.cte_chave
+                "cte_chave": i.cte_chave,
+                "remetente_ndoc": i.remetente_ndoc
             }
             for i in carga.invoices
         ]
@@ -152,7 +154,7 @@ async def alterar_status(
     db: AsyncSession = Depends(get_db),
 ):
     # Note: OpenAPI shows `novo_status` (examples with {"code":"1"}) and `anexo` (file). Internally we accept string or object for `novo_status` and also a hidden `anexos` JSON field.
-    q = select(ShipmentInvoice).where(ShipmentInvoice.id == carga_id)
+    q = select(ShipmentInvoice).where(ShipmentInvoice.id == carga_id).options(selectinload(ShipmentInvoice.shipment))
     res = await db.execute(q)
     carga = res.scalars().first()
 
@@ -265,21 +267,29 @@ async def alterar_status(
             for i in anexos_final:
                 i["recebedor"] = recebedor_validado
 
-    # Persist recebedor on the carga when provided
+    # Persist recebedor on the PARENT shipment when provided (we eager-loaded shipment above to avoid lazy IO)
     if recebedor_validado:
-        carga.recebedor_nDoc = recebedor_validado.get('nDoc') or carga.recebedor_nDoc
-        carga.recebedor_xNome = recebedor_validado.get('xNome') or carga.recebedor_xNome
-        carga.recebedor_IE = recebedor_validado.get('IE') or carga.recebedor_IE
-        carga.recebedor_cFiscal = recebedor_validado.get('cFiscal') or carga.recebedor_cFiscal
-        carga.recebedor_xLgr = recebedor_validado.get('xLgr') or carga.recebedor_xLgr
-        carga.recebedor_nro = recebedor_validado.get('nro') or carga.recebedor_nro
-        carga.recebedor_xCpl = recebedor_validado.get('xCpl') or carga.recebedor_xCpl
-        carga.recebedor_xBairro = recebedor_validado.get('xBairro') or carga.recebedor_xBairro
-        carga.recebedor_cMun = recebedor_validado.get('cMun') or carga.recebedor_cMun
-        carga.recebedor_CEP = recebedor_validado.get('CEP') or carga.recebedor_CEP
-        carga.recebedor_cPais = recebedor_validado.get('cPais') or carga.recebedor_cPais
-        carga.recebedor_nFone = recebedor_validado.get('nFone') or carga.recebedor_nFone
-        carga.recebedor_email = recebedor_validado.get('email') or carga.recebedor_email
+        if getattr(carga, 'shipment', None):
+            shipment_obj = carga.shipment
+            shipment_obj.recebedor_nDoc = recebedor_validado.get('nDoc') or shipment_obj.recebedor_nDoc
+            shipment_obj.recebedor_xNome = recebedor_validado.get('xNome') or shipment_obj.recebedor_xNome
+            shipment_obj.recebedor_IE = recebedor_validado.get('IE') or shipment_obj.recebedor_IE
+            shipment_obj.recebedor_cFiscal = recebedor_validado.get('cFiscal') or shipment_obj.recebedor_cFiscal
+            shipment_obj.recebedor_xLgr = recebedor_validado.get('xLgr') or shipment_obj.recebedor_xLgr
+            shipment_obj.recebedor_nro = recebedor_validado.get('nro') or shipment_obj.recebedor_nro
+            shipment_obj.recebedor_xCpl = recebedor_validado.get('xCpl') or shipment_obj.recebedor_xCpl
+            shipment_obj.recebedor_xBairro = recebedor_validado.get('xBairro') or shipment_obj.recebedor_xBairro
+            shipment_obj.recebedor_cMun = recebedor_validado.get('cMun') or shipment_obj.recebedor_cMun
+            shipment_obj.recebedor_CEP = recebedor_validado.get('CEP') or shipment_obj.recebedor_CEP
+            shipment_obj.recebedor_cPais = recebedor_validado.get('cPais') or shipment_obj.recebedor_cPais
+            shipment_obj.recebedor_nFone = recebedor_validado.get('nFone') or shipment_obj.recebedor_nFone
+            shipment_obj.recebedor_email = recebedor_validado.get('email') or shipment_obj.recebedor_email
+            db.add(shipment_obj)
+        else:
+            # no parent shipment available (unexpected); best-effort: keep values on invoice instance dictionary
+            carga.__dict__['recebedor_nDoc'] = recebedor_validado.get('nDoc')
+            carga.__dict__['recebedor_xNome'] = recebedor_validado.get('xNome')
+            carga.__dict__['recebedor_nFone'] = recebedor_validado.get('nFone')
 
     await commit_or_raise(db)
     await db.refresh(carga)
@@ -311,10 +321,10 @@ async def alterar_status(
     except Exception:
         recebedor_validado = None
 
-    print(carga)
-    remetente_validado = carga.rem_nDoc if carga.rem_nDoc else carga.rem.nDoc
+    # Prefer invoice-level remetente_ndoc, then shipment.rem_nDoc
+    remetente_validado = getattr(carga, 'remetente_ndoc', None) or (carga.shipment.rem_nDoc if getattr(carga, 'shipment', None) and getattr(carga.shipment, 'rem_nDoc', None) else None)
 
-    success, resp_text = await tv.enviar(chave_documento=carga.access_key, codigo_evento=code_to_send, anexos=anexos_final, recebedor=recebedor_validado, remetente_cnpj=remetente_validado)
+    success, resp_text = await tv.enviar(chave_documento=carga.access_key, codigo_evento=code_to_send, anexos=anexos_final, recebedor=recebedor_validado, remetente_cnpj=remetente_validado) 
     results.append({"cte": str(carga.id), "ok": success, "vblog_response": resp_text[:500]})
 
     # registrar tracking interno

@@ -130,6 +130,9 @@ class ShipmentInvoice(Base):
     cte_chave = Column(String(100), nullable=True)
     xmls_b64 = Column(JSON, nullable=True)
 
+    # Invoice-level remetente nDoc (may be present per nota). Use shipment.rem_nDoc as fallback on insert.
+    remetente_ndoc = Column(String(100), nullable=True, index=True)
+
     cfop = Column(String(20), nullable=True)
 
     trackings = relationship("ShipmentInvoiceTracking", back_populates="invoice", cascade="all, delete-orphan")

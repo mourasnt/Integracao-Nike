@@ -77,7 +77,9 @@ async def receive_emission(payload: NotfisPayload, current_user: str = Depends(g
 
                     invoice_payload = nota_to_invoice_payload(nf, shipment_id=shipment.id)
                     invoice = ShipmentInvoice(**invoice_payload)
-                    db.add(invoice)
+                    # Ensure invoice-level remetente ndoc is populated; fallback to shipment.rem_nDoc
+                    invoice.remetente_ndoc = invoice_payload.get('remetente_ndoc') or shipment.rem_nDoc
+                    db.add(invoice) 
 
                 try:
                     from app.utils.db_utils import commit_or_raise

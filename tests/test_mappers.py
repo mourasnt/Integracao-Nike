@@ -35,3 +35,17 @@ def test_nota_mapping_basic():
     assert payload['invoice_number'] == '123'
     assert payload['access_key'] == '44CHAVE'
     assert payload['cte_chave'] == 'CTECHAVE'
+
+
+def test_nota_mapping_includes_remetente_ndoc_when_present():
+    nf = Dummy(nPed='PED', serie='1', nDoc='123', dEmi='2024-01-01', vBC='10', vNF=1200.0, nCFOP='5102', pBru='10.5', qVol='3', chave='44CHAVE', cte={'Chave': 'CTECHAVE'})
+    # simulate nested rem object on nota
+    nf.rem = Dummy(nDoc='99999999000199')
+    payload = nota_to_invoice_payload(nf, shipment_id=42)
+    assert payload['remetente_ndoc'] == '99999999000199'
+
+
+def test_nota_mapping_remetente_ndoc_none_when_absent():
+    nf = Dummy(nPed='PED', serie='1', nDoc='123', dEmi='2024-01-01', vBC='10', vNF=1200.0, nCFOP='5102', pBru='10.5', qVol='3', chave='44CHAVE', cte={'Chave': 'CTECHAVE'})
+    payload = nota_to_invoice_payload(nf, shipment_id=42)
+    assert 'remetente_ndoc' in payload and payload['remetente_ndoc'] is None

@@ -19,6 +19,13 @@ async def test_montar_payload_with_message():
         assert expected_msg in doc["eventos"][0]["obs"] or doc["eventos"][0]["obs"] is None
 
 
+def test_montar_payload_includes_cliente():
+    svc = TrackingService()
+    payload = svc.montar_payload("3524CHAVE", "10", remetente_cnpj='11111111000111')
+    doc = payload["documentos"][0]
+    assert doc["cliente"] == '11111111000111'
+
+
 @pytest.mark.asyncio
 async def test_enviar_uses_client(monkeypatch):
     async def fake_get_client(self):
