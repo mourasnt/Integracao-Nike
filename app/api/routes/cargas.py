@@ -289,24 +289,27 @@ async def alterar_status(
     results = []
 
     # If recebedor not provided in request, fallback to persisted recebedor on the carga
-    if not recebedor_validado:
-        db_r = {
-            "nDoc": carga.recebedor_nDoc,
-            "xNome": carga.recebedor_xNome,
-            "IE": carga.recebedor_IE,
-            "cFiscal": carga.recebedor_cFiscal,
-            "xLgr": carga.recebedor_xLgr,
-            "nro": carga.recebedor_nro,
-            "xCpl": carga.recebedor_xCpl,
-            "xBairro": carga.recebedor_xBairro,
-            "cMun": carga.recebedor_cMun,
-            "CEP": carga.recebedor_CEP,
-            "cPais": carga.recebedor_cPais,
-            "nFone": carga.recebedor_nFone,
-            "email": carga.recebedor_email,
-        }
-        if db_r.get("nDoc") or db_r.get("xNome"):
-            recebedor_validado = db_r
+    try:
+        if not recebedor_validado:
+            db_r = {
+                "nDoc": carga.recebedor_nDoc,
+                "xNome": carga.recebedor_xNome,
+                "IE": carga.recebedor_IE,
+                "cFiscal": carga.recebedor_cFiscal,
+                "xLgr": carga.recebedor_xLgr,
+                "nro": carga.recebedor_nro,
+                "xCpl": carga.recebedor_xCpl,
+                "xBairro": carga.recebedor_xBairro,
+                "cMun": carga.recebedor_cMun,
+                "CEP": carga.recebedor_CEP,
+                "cPais": carga.recebedor_cPais,
+                "nFone": carga.recebedor_nFone,
+                "email": carga.recebedor_email,
+            }
+            if db_r.get("nDoc") or db_r.get("xNome"):
+                recebedor_validado = db_r
+    except Exception:
+        recebedor_validado = None
 
     remetente_validado = carga.get("rem_nDoc") if carga.get("rem_nDoc") else carga.get("rem").get("nDoc")
 
