@@ -29,6 +29,16 @@ IBGE_MUNIS_URL = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios
 
 SHAPEFILE_MUNICIPIOS_PATH = "./dados_geo/BR_Municipios_2024.shp"
 
+# Mapeamento de código IBGE do estado para sigla UF (fallback quando tabela municipios está vazia)
+CODIGO_IBGE_TO_UF = {
+    11: "RO", 12: "AC", 13: "AM", 14: "RR", 15: "PA", 16: "AP", 17: "TO",
+    21: "MA", 22: "PI", 23: "CE", 24: "RN", 25: "PB", 26: "PE", 27: "AL",
+    28: "SE", 29: "BA",
+    31: "MG", 32: "ES", 33: "RJ", 35: "SP",
+    41: "PR", 42: "SC", 43: "RS",
+    50: "MS", 51: "MT", 52: "GO", 53: "DF"
+}
+
 
 # -------------------------------------------------------------------
 # SERVICE
@@ -39,14 +49,37 @@ class LocalidadesService:
     @staticmethod
     async def _find_municipio_info_by_codigo(db: AsyncSession, codigo_ibge: int):
         """Return (municipio_codigo, municipio_nome, estado_codigo, estado_sigla) or (None,None,None,None) if not found."""
+        print(f"      [DEBUG] _find_municipio_info_by_codigo called with codigo_ibge={codigo_ibge} (type={type(codigo_ibge).__name__})")
         try:
-            result = await db.execute(select(Municipio).options(selectinload(Municipio.estado)).where(Municipio.codigo_ibge == codigo_ibge))
-            muni = result.scalar_one_or_none()
-            if not muni:
-                return None, None, None, None
-            estado = muni.estado
-            return muni.codigo_ibge, muni.nome, (estado.codigo_ibge if estado else None), (estado.sigla if estado else None)
-        except Exception:
+            # First, check if table and records exist
+            count_result = await db.execute(text("SELECT COUNT(*) FROM municipios"))
+            total_count = count_result.scalar()
+            print(f"      [DEBUG] Total municipios in DB: {total_count}")
+            
+            # Try to check if specific codigo exists
+            check_result = await db.execute(text("SELECT codigo_ibge, nome FROM municipios WHERE codigo_ibge = :codigo LIMIT 1"), {"codigo": codigo_ibge})
+            check_row = check_result.first()
+            print(f"      [DEBUG] Raw SQL query result: {check_row}")
+            
+            # Use savepoint to isolate query failures - if the table doesn't exist or query fails,
+            # only this savepoint is aborted, not the parent transaction
+            async with db.begin_nested():
+                # IMPORTANT: defer(Municipio.geometria) to avoid PostGIS function calls
+                result = await db.execute(select(Municipio).options(selectinload(Municipio.estado), defer(Municipio.geometria)).where(Municipio.codigo_ibge == codigo_ibge))
+                muni = result.scalar_one_or_none()
+                print(f"      [DEBUG] ORM Query result: muni={muni}")
+                if muni:
+                    print(f"      [DEBUG] Found municipio: codigo_ibge={muni.codigo_ibge} (type={type(muni.codigo_ibge).__name__}), nome={muni.nome}")
+                    estado = muni.estado
+                    print(f"      [DEBUG] Estado: {estado}, codigo_ibge={estado.codigo_ibge if estado else None}, sigla={estado.sigla if estado else None}")
+                    return muni.codigo_ibge, muni.nome, (estado.codigo_ibge if estado else None), (estado.sigla if estado else None)
+                else:
+                    print(f"      [DEBUG] No municipio found with codigo_ibge={codigo_ibge}")
+                    return None, None, None, None
+        except Exception as e:
+            print(f"      [DEBUG] Exception in _find_municipio_info_by_codigo: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             return None, None, None, None
 
     @staticmethod
@@ -55,7 +88,12 @@ class LocalidadesService:
 
         This function will attempt to use IBGE codes found on the shipment (e.g. rem_cMun, dest_cMun, recebedor_cMun, c_orig_calc, c_dest_calc).
         It will not raise on missing entries — it will just skip them.
+        
+        Também preenche os campos JSON 'origem' e 'destino' baseados em rem_cMun e dest_cMun.
+        Usa fallback para extrair UF do código IBGE quando a tabela municipios está vazia.
         """
+        print(f"\n[DEBUG] set_shipment_locations INICIADO para shipment_id={shipment.id}")
+        
         # Mapping config: field -> (ibge_source_attr, uf_attr, estado_codigo_attr, municipio_codigo_attr, municipio_nome_attr)
         mapping = {
             'rem': ('rem_cMun', 'rem_uf', 'rem_estado_codigo_ibge', 'rem_municipio_codigo_ibge', 'rem_municipio_nome'),
@@ -65,31 +103,94 @@ class LocalidadesService:
             'destino': ('c_dest_calc', 'destino_uf', 'destino_estado_codigo_ibge', 'destino_municipio_codigo_ibge', 'destino_municipio_nome'),
         }
 
+        # Armazenar dados para preencher campos JSON consolidados
+        origem_data = None
+        destino_data = None
+
         for key, (src_attr, uf_attr, estado_attr, municipio_attr, municipio_nome_attr) in mapping.items():
             try:
                 val = getattr(shipment, src_attr, None)
+                print(f"  [DEBUG] Processando '{key}': {src_attr}={val}")
+                
                 if val is None:
+                    print(f"    [DEBUG] {src_attr} é None, pulando...")
                     continue
+                    
                 # normalize numeric IBGE if provided as string
                 try:
                     codigo = int(str(val).strip())
-                except Exception:
+                except Exception as e:
+                    print(f"    [DEBUG] Erro ao converter para int: {e}")
                     codigo = None
 
                 if codigo:
+                    print(f"    [DEBUG] Código IBGE extraído: {codigo}")
+                    
+                    # Tenta buscar no banco primeiro
                     muni_codigo, muni_nome, est_codigo, est_sigla = await LocalidadesService._find_municipio_info_by_codigo(db, codigo)
+                    print(f"    [DEBUG] Resultado DB: muni_codigo={muni_codigo}, muni_nome={muni_nome}, est_codigo={est_codigo}, est_sigla={est_sigla}")
+                    
+                    # Fallback: extrair UF do código IBGE (2 primeiros dígitos = código do estado)
+                    if est_sigla is None and codigo >= 1000000:
+                        estado_codigo = codigo // 100000  # Extrai os 2 primeiros dígitos
+                        est_sigla = CODIGO_IBGE_TO_UF.get(estado_codigo)
+                        est_codigo = estado_codigo
+                        muni_codigo = codigo
+                        print(f"    [DEBUG] Usando FALLBACK: estado_codigo={estado_codigo}, est_sigla={est_sigla}")
+                    
                     if muni_codigo is not None:
                         setattr(shipment, municipio_attr, muni_codigo)
+                        print(f"    [DEBUG] setattr({municipio_attr}, {muni_codigo})")
+                        
                     if muni_nome:
                         setattr(shipment, municipio_nome_attr, muni_nome)
+                        print(f"    [DEBUG] setattr({municipio_nome_attr}, {muni_nome})")
+                        
                     if est_codigo is not None:
                         setattr(shipment, estado_attr, est_codigo)
+                        print(f"    [DEBUG] setattr({estado_attr}, {est_codigo})")
+                        
                     if est_sigla:
                         setattr(shipment, uf_attr, est_sigla)
+                        print(f"    [DEBUG] setattr({uf_attr}, {est_sigla})")
+                    
+                    # Capturar dados para campos JSON consolidados
+                    if key == 'rem' and est_sigla:
+                        origem_data = {"uf": est_sigla, "municipio": muni_nome or str(codigo)}
+                        print(f"    [DEBUG] origem_data definido: {origem_data}")
+                    elif key == 'dest' and est_sigla:
+                        destino_data = {"uf": est_sigla, "municipio": muni_nome or str(codigo)}
+                        print(f"    [DEBUG] destino_data definido: {destino_data}")
+                else:
+                    print(f"    [DEBUG] codigo é None, pulando...")
+                        
             except Exception as e:
                 # Best-effort: do not raise; just log and continue
                 print(f"[WARN] set_shipment_locations failed for {key}: {e}")
+                import traceback
+                traceback.print_exc()
                 continue
+
+        # Preencher campos JSON consolidados
+        print(f"\n  [DEBUG] Antes de atribuir JSON: origem_data={origem_data}, destino_data={destino_data}")
+        print(f"  [DEBUG] Antes de atribuir: shipment.origem={getattr(shipment, 'origem', 'ATTR_NOT_EXIST')}")
+        print(f"  [DEBUG] Antes de atribuir: shipment.destino={getattr(shipment, 'destino', 'ATTR_NOT_EXIST')}")
+        
+        if origem_data:
+            shipment.origem = origem_data
+            print(f"  [DEBUG] shipment.origem atribuído: {shipment.origem}")
+        else:
+            print(f"  [DEBUG] origem_data é None/falsy, não atribuindo")
+            
+        if destino_data:
+            shipment.destino = destino_data
+            print(f"  [DEBUG] shipment.destino atribuído: {shipment.destino}")
+        else:
+            print(f"  [DEBUG] destino_data é None/falsy, não atribuindo")
+        
+        print(f"  [DEBUG] Depois de atribuir: shipment.origem={getattr(shipment, 'origem', 'ATTR_NOT_EXIST')}")
+        print(f"  [DEBUG] Depois de atribuir: shipment.destino={getattr(shipment, 'destino', 'ATTR_NOT_EXIST')}")
+        print(f"[DEBUG] set_shipment_locations FINALIZADO para shipment_id={shipment.id}\n")
 
 
     # ===============================================================

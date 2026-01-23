@@ -81,6 +81,11 @@ class Shipment(Base):
     destino_municipio_codigo_ibge = Column(Integer, nullable=True)
     destino_municipio_nome = Column(String(255), nullable=True)
 
+    # Origem/Destino JSON consolidados (baseado em rem_cMun e dest_cMun)
+    # Formato: {"uf": "SP", "municipio": "São Paulo"}
+    origem = Column(JSON, nullable=True)
+    destino = Column(JSON, nullable=True)
+
     # Destinatario
     dest_nDoc = Column(String(20), nullable=True, index=True)
     dest_xNome = Column(String(255), nullable=True)
