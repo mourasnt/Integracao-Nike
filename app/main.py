@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 import logging
@@ -27,6 +28,22 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Integração Nike Store - Notfis/JSON", lifespan=lifespan)
+
+# CORS for local front-end (vite)
+origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def _serialize_validation_errors(errors):
