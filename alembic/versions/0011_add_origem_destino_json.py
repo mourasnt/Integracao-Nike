@@ -16,11 +16,53 @@ branch_labels = None
 depends_on = None
 
 
+def _column_exists(inspector, table, column):
+    """Check if a column exists in a table."""
+    try:
+        cols = [c['name'] for c in inspector.get_columns(table)]
+        return column in cols
+    except Exception:
+        return False
+
+
 def upgrade() -> None:
-    op.add_column('shipments', sa.Column('origem', postgresql.JSON(), nullable=True))
-    op.add_column('shipments', sa.Column('destino', postgresql.JSON(), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    if not inspector.has_table('shipments'):
+        return
+
+    # Add columns only if they don't exist
+    if not _column_exists(inspector, 'shipments', 'origem'):
+        try:
+            op.add_column('shipments', sa.Column('origem', postgresql.JSON(), nullable=True))
+        except Exception:
+            if not _column_exists(inspector, 'shipments', 'origem'):
+                raise
+
+    if not _column_exists(inspector, 'shipments', 'destino'):
+        try:
+            op.add_column('shipments', sa.Column('destino', postgresql.JSON(), nullable=True))
+        except Exception:
+            if not _column_exists(inspector, 'shipments', 'destino'):
+                raise
 
 
 def downgrade() -> None:
-    op.drop_column('shipments', 'destino')
-    op.drop_column('shipments', 'origem')
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    if not inspector.has_table('shipments'):
+        return
+
+    if _column_exists(inspector, 'shipments', 'destino'):
+        try:
+            op.drop_column('shipments', 'destino')
+        except Exception:
+            pass
+
+    if _column_exists(inspector, 'shipments', 'origem'):
+        try:
+            op.drop_column('shipments', 'origem')
+        except Exception:
+            pass

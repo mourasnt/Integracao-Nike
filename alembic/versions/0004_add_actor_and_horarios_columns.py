@@ -14,6 +14,24 @@ branch_labels = None
 depends_on = None
 
 
+def _column_exists(inspector, table, column):
+    """Check if a column exists in a table."""
+    try:
+        cols = [c['name'] for c in inspector.get_columns(table)]
+        return column in cols
+    except Exception:
+        return False
+
+
+def _index_exists(inspector, table, index_name):
+    """Check if an index exists in a table."""
+    try:
+        idxs = [i['name'] for i in inspector.get_indexes(table)]
+        return index_name in idxs
+    except Exception:
+        return False
+
+
 def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
@@ -49,10 +67,6 @@ def upgrade():
             if col_name not in current_cols:
                 raise
             # otherwise, ignore the error and proceed
-
-    # Tomador (expanded fields)
-    add_col_if_missing('tomador_nDoc', sa.Column('tomador_nDoc', sa.String(length=20), nullable=True))
-    add_col_if_missing('tomador_xNome', sa.Column('tomador_xNome', sa.String(length=255), nullable=True))
 
     # Remetente
     add_col_if_missing('rem_IE', sa.Column('rem_IE', sa.String(length=50), nullable=True))
@@ -106,17 +120,21 @@ def upgrade():
     add_col_if_missing('finalizacao', sa.Column('finalizacao', sa.DateTime(timezone=True), nullable=True))
 
     # Create indexes for nDoc fields if they don't exist
-    try:
-        existing_indexes = [i['name'] for i in inspector.get_indexes('shipments')]
-    except Exception:
-        existing_indexes = []
-
-    if 'ix_shipments_rem_nDoc' not in existing_indexes:
-        op.create_index('ix_shipments_rem_nDoc', 'shipments', ['rem_nDoc'])
-    if 'ix_shipments_dest_nDoc' not in existing_indexes:
-        op.create_index('ix_shipments_dest_nDoc', 'shipments', ['dest_nDoc'])
-    if 'ix_shipments_recebedor_nDoc' not in existing_indexes:
-        op.create_index('ix_shipments_recebedor_nDoc', 'shipments', ['recebedor_nDoc'])
+    if not _index_exists(inspector, 'shipments', 'ix_shipments_rem_nDoc'):
+        try:
+            op.create_index('ix_shipments_rem_nDoc', 'shipments', ['rem_nDoc'])
+        except Exception:
+            pass
+    if not _index_exists(inspector, 'shipments', 'ix_shipments_dest_nDoc'):
+        try:
+            op.create_index('ix_shipments_dest_nDoc', 'shipments', ['dest_nDoc'])
+        except Exception:
+            pass
+    if not _index_exists(inspector, 'shipments', 'ix_shipments_recebedor_nDoc'):
+        try:
+            op.create_index('ix_shipments_recebedor_nDoc', 'shipments', ['recebedor_nDoc'])
+        except Exception:
+            pass
 
 
 def downgrade():
@@ -127,17 +145,21 @@ def downgrade():
         return
 
     # Drop indexes if they exist
-    try:
-        existing_indexes = [i['name'] for i in inspector.get_indexes('shipments')]
-    except Exception:
-        existing_indexes = []
-
-    if 'ix_shipments_rem_nDoc' in existing_indexes:
-        op.drop_index('ix_shipments_rem_nDoc', table_name='shipments')
-    if 'ix_shipments_dest_nDoc' in existing_indexes:
-        op.drop_index('ix_shipments_dest_nDoc', table_name='shipments')
-    if 'ix_shipments_recebedor_nDoc' in existing_indexes:
-        op.drop_index('ix_shipments_recebedor_nDoc', table_name='shipments')
+    if _index_exists(inspector, 'shipments', 'ix_shipments_rem_nDoc'):
+        try:
+            op.drop_index('ix_shipments_rem_nDoc', table_name='shipments')
+        except Exception:
+            pass
+    if _index_exists(inspector, 'shipments', 'ix_shipments_dest_nDoc'):
+        try:
+            op.drop_index('ix_shipments_dest_nDoc', table_name='shipments')
+        except Exception:
+            pass
+    if _index_exists(inspector, 'shipments', 'ix_shipments_recebedor_nDoc'):
+        try:
+            op.drop_index('ix_shipments_recebedor_nDoc', table_name='shipments')
+        except Exception:
+            pass
 
     # Drop columns if they exist
     def drop_col_if_exists(col_name):
@@ -148,7 +170,7 @@ def downgrade():
         if col_name in cols:
             op.drop_column('shipments', col_name)
 
-    for c in ['tomador_nDoc','tomador_xNome', 'rem_IE','rem_cFiscal','rem_xFant','rem_xLgr','rem_nro','rem_xCpl','rem_xBairro','rem_cMun','rem_CEP','rem_cPais','rem_nFone','rem_email',
+    for c in ['rem_IE','rem_cFiscal','rem_xFant','rem_xLgr','rem_nro','rem_xCpl','rem_xBairro','rem_cMun','rem_CEP','rem_cPais','rem_nFone','rem_email',
               'dest_IE','dest_cFiscal','dest_xFant','dest_xLgr','dest_nro','dest_xCpl','dest_xBairro','dest_cMun','dest_CEP','dest_cPais','dest_nFone','dest_email',
               'recebedor_nDoc','recebedor_xNome','recebedor_IE','recebedor_cFiscal','recebedor_xLgr','recebedor_nro','recebedor_xCpl','recebedor_xBairro','recebedor_cMun','recebedor_CEP','recebedor_cPais','recebedor_nFone','recebedor_email',
               'et_origem','chegada_coleta','saida_coleta','eta_destino','chegada_destino','finalizacao']:

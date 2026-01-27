@@ -14,42 +14,44 @@ branch_labels = None
 depends_on = None
 
 
+def _column_exists(inspector, table, column):
+    """Check if a column exists in a table."""
+    try:
+        cols = [c['name'] for c in inspector.get_columns(table)]
+        return column in cols
+    except Exception:
+        return False
+
+
 def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
 
-    # If the table doesn't exist, skip safely (it may be created by another migration or application startup)
+    # If the table doesn't exist, skip safely
     if not inspector.has_table('shipment_invoices'):
         return
 
-    # Add column only if it is missing. Use get_columns() (wrapped) because Inspector has no has_column().
-    try:
-        existing_cols = [c['name'] for c in inspector.get_columns('shipment_invoices')]
-    except Exception:
-        existing_cols = []
+    # Early return if column already exists
+    if _column_exists(inspector, 'shipment_invoices', 'xmls_b64'):
+        return
 
-    if 'xmls_b64' not in existing_cols:
-        # Prefer Postgres-safe SQL to avoid DuplicateColumnError in concurrent runs
-        if bind.dialect.name == 'postgresql':
-            try:
-                op.execute("ALTER TABLE shipment_invoices ADD COLUMN IF NOT EXISTS xmls_b64 JSON")
-            except Exception:
-                # fall through to ensure the column exists using SQLAlchemy helper
-                pass
-
-        # Re-check; if still missing, add via SQLAlchemy API (idempotent fallback)
+    # Add column using PostgreSQL IF NOT EXISTS if available
+    if bind.dialect.name == 'postgresql':
         try:
-            current_cols = [c['name'] for c in inspector.get_columns('shipment_invoices')]
+            op.execute("ALTER TABLE shipment_invoices ADD COLUMN IF NOT EXISTS xmls_b64 JSON")
+            return
         except Exception:
-            current_cols = existing_cols
+            # Fall through to SQLAlchemy method
+            pass
 
-        if 'xmls_b64' not in current_cols:
-            op.add_column('shipment_invoices', sa.Column('xmls_b64', sa.JSON(), nullable=True))
+    # Final check and add using SQLAlchemy
+    if not _column_exists(inspector, 'shipment_invoices', 'xmls_b64'):
+        op.add_column('shipment_invoices', sa.Column('xmls_b64', sa.JSON(), nullable=True))
 
 
 def downgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
 
-    if inspector.has_table('shipment_invoices') and inspector.has_column('shipment_invoices', 'xmls_b64'):
+    if inspector.has_table('shipment_invoices') and _column_exists(inspector, 'shipment_invoices', 'xmls_b64'):
         op.drop_column('shipment_invoices', 'xmls_b64')

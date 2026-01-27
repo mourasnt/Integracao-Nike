@@ -14,6 +14,15 @@ branch_labels = None
 depends_on = None
 
 
+def _column_exists(inspector, table, column):
+    """Check if a column exists in a table."""
+    try:
+        cols = [c['name'] for c in inspector.get_columns(table)]
+        return column in cols
+    except Exception:
+        return False
+
+
 def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
@@ -67,12 +76,7 @@ def downgrade():
     if not inspector.has_table('shipments'):
         return
 
-    try:
-        existing_cols = [c['name'] for c in inspector.get_columns('shipments')]
-    except Exception:
-        existing_cols = []
-
-    if 'tomador_nDoc' in existing_cols:
+    if _column_exists(inspector, 'shipments', 'tomador_nDoc') and _column_exists(inspector, 'shipments', 'tomador_xNome'):
         op.drop_column('shipments', 'tomador_nDoc')
-    if 'tomador_xNome' in existing_cols:
+    if _column_exists(inspector, 'shipments', 'tomador_xNome'):
         op.drop_column('shipments', 'tomador_xNome')
