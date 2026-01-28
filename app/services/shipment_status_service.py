@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 import httpx
 from fastapi import HTTPException, UploadFile
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -38,10 +39,9 @@ class ShipmentStatusService:
         request,
     ) -> ShipmentStatusRequest:
         """Parse flexible status input (string/int/dict) plus recebedor/anexos from either JSON or form."""
-        from loguru import logger
-        
-        logger.info(f"[PARSE_REQUEST] Started - novo_status type: {type(novo_status)}, value: {novo_status}")
-        logger.info(f"[PARSE_REQUEST] recebedor_raw type: {type(recebedor_raw)}, value: {recebedor_raw}")
+        logger.info(f"=== parse_request called ===")
+        logger.info(f"novo_status: {novo_status}, type: {type(novo_status)}")
+        logger.info(f"recebedor_raw: {recebedor_raw}")
         
         anexos_input = None
         recebedor_validado = None
@@ -52,69 +52,76 @@ class ShipmentStatusService:
         
         # If novo_status is a dict (from JSON body), check for additional fields
         if isinstance(novo_status, dict):
-            logger.info(f"[PARSE_REQUEST] novo_status is dict, checking for anexos and recebedor")
+            logger.info(f"novo_status is dict, extracting fields")
             anexos_input = novo_status.get("anexos") or None
+            logger.info(f"anexos_input from dict: {anexos_input}")
             if "recebedor" in novo_status:
                 recebedor_raw = novo_status.get("recebedor", recebedor_raw)
-            logger.info(f"[PARSE_REQUEST] anexos_input: {anexos_input}, recebedor_raw updated: {recebedor_raw}")
+                logger.info(f"Found recebedor in novo_status: {recebedor_raw}")
 
         # Recebedor can arrive as dict or JSON string
         if isinstance(recebedor_raw, dict):
             recebedor_validado = recebedor_raw
+            logger.info(f"recebedor_raw is dict: {recebedor_validado}")
         elif isinstance(recebedor_raw, str):
             try:
                 recebedor_validado = json.loads(recebedor_raw)
-                logger.info(f"[PARSE_REQUEST] Parsed recebedor from string: {recebedor_validado}")
+                logger.info(f"Parsed recebedor_raw as JSON: {recebedor_validado}")
             except Exception as e:
-                logger.error(f"[PARSE_REQUEST] Failed to parse recebedor: {e}")
+                logger.warning(f"Failed to parse recebedor_raw: {e}")
                 recebedor_validado = None
 
         # Normalize status code
         code_val = None
-        logger.info(f"[PARSE_REQUEST] Starting code extraction from: {novo_status}")
+        logger.info(f"Starting status code extraction...")
+        logger.info(f"novo_status type check: str={isinstance(novo_status, (str, int))}, dict={isinstance(novo_status, dict)}")
         
         if isinstance(novo_status, (str, int)):
-            logger.info(f"[PARSE_REQUEST] novo_status is string or int")
+            logger.info(f"novo_status is string or int")
             s = str(novo_status).strip()
+            logger.info(f"Converted to string: '{s}'")
             if s.startswith("{") or s.startswith("["):
-                logger.info(f"[PARSE_REQUEST] Trying to parse as JSON string: {s}")
+                logger.info(f"Detected JSON format, attempting to parse")
                 try:
                     parsed = json.loads(s)
+                    logger.info(f"Parsed JSON: {parsed}")
                     if isinstance(parsed, dict) and "code" in parsed:
                         code_val = str(parsed["code"])
-                        logger.info(f"[PARSE_REQUEST] Extracted code from JSON: {code_val}")
+                        logger.info(f"Extracted code from JSON: {code_val}")
                 except Exception as e:
-                    logger.error(f"[PARSE_REQUEST] Failed to parse JSON string: {e}")
-                    pass
+                    logger.error(f"Failed to parse as JSON: {e}")
             if code_val is None:
                 code_val = s
-                logger.info(f"[PARSE_REQUEST] Using string as-is: {code_val}")
+                logger.info(f"Using raw string as code: {code_val}")
         elif isinstance(novo_status, dict):
-            logger.info(f"[PARSE_REQUEST] novo_status is dict, looking for 'code' key")
+            logger.info(f"novo_status is dict, checking for 'code' key")
+            logger.info(f"Dict keys: {novo_status.keys()}")
             if "code" in novo_status:
                 code_val = str(novo_status["code"])
-                logger.info(f"[PARSE_REQUEST] Extracted code from dict: {code_val}")
+                logger.info(f"Extracted code from dict: {code_val}")
             else:
-                logger.warning(f"[PARSE_REQUEST] 'code' key not found in dict. Keys present: {list(novo_status.keys())}")
+                logger.warning(f"No 'code' key in dict: {novo_status}")
         elif hasattr(novo_status, "code"):
             code_val = str(novo_status.code)
-            logger.info(f"[PARSE_REQUEST] Extracted code from object attribute: {code_val}")
+            logger.info(f"Extracted code from object attribute: {code_val}")
         else:
-            logger.warning(f"[PARSE_REQUEST] novo_status type not handled: {type(novo_status)}")
+            logger.warning(f"novo_status is unexpected type: {type(novo_status)}")
 
-        logger.info(f"[PARSE_REQUEST] Extracted code_val: {code_val}")
+        logger.info(f"Final code_val: {code_val}")
         
         if not code_val:
-            logger.error(f"[PARSE_REQUEST] No code extracted! novo_status was: {novo_status}")
+            logger.error(f"code_val is empty or None!")
             raise HTTPException(400, "novo_status inválido: forneça apenas o código, ex: {\"novo_status\": \"1\"}")
 
-        logger.info(f"[PARSE_REQUEST] Validating code '{code_val}' against VALID_CODES_SET")
         # Validate early against known codes
+        logger.info(f"Validating code '{code_val}' against VALID_CODES_SET")
+        logger.info(f"VALID_CODES_SET has {len(VALID_CODES_SET)} codes")
         if code_val not in VALID_CODES_SET:
-            logger.error(f"[PARSE_REQUEST] Code '{code_val}' not in VALID_CODES_SET")
+            logger.error(f"Code '{code_val}' not in VALID_CODES_SET")
+            logger.info(f"Available codes sample: {list(VALID_CODES_SET)[:10]}")
             raise HTTPException(400, "Código tracking inválido")
 
-        logger.info(f"[PARSE_REQUEST] Success! Returning ShipmentStatusRequest with code={code_val}")
+        logger.info(f"Status code validation passed")
         # Let Pydantic perform final validation and structure
         return ShipmentStatusRequest(code=code_val, recebedor=recebedor_validado, anexos=anexos_input)
 

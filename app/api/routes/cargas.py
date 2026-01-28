@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body, File, UploadFile, Form, status
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -48,36 +48,47 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
 async def alterar_status(
     carga_id: int,
     current_user: str = Depends(get_current_user),
-    novo_status: Optional[Any] = Body(None, description="Código do novo status (ex: {\"code\": \"1\"} ou \"1\")"),
-    new_status: Optional[str] = Form(None, description="Status from form data (multipart)"),
     anexo: Optional[UploadFile] = File(None),
+    new_status: Optional[str] = Form(None, description="Status from form data (multipart)"),
     recebedor: Optional[str] = Form(None),
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
-    logger.info(f"[STATUS UPDATE] carga_id={carga_id}, user={current_user}")
-    logger.info(f"[STATUS UPDATE] Content-Type: {request.headers.get('content-type') if request else 'N/A'}")
-    logger.info(f"[STATUS UPDATE] novo_status (Body): {novo_status}")
-    logger.info(f"[STATUS UPDATE] new_status (Form): {new_status}")
-    logger.info(f"[STATUS UPDATE] anexo presente: {anexo is not None}")
-    logger.info(f"[STATUS UPDATE] recebedor: {recebedor}")
+    content_type = request.headers.get("content-type", "") if request else ""
+    logger.info(f"=== alterar_status endpoint ===")
+    logger.info(f"carga_id: {carga_id}")
+    logger.info(f"Content-Type: {content_type}")
+    logger.info(f"new_status (Form): {new_status}, type: {type(new_status)}")
+    logger.info(f"anexo: {anexo.filename if anexo else None}")
+    logger.info(f"recebedor: {recebedor}")
     
-    # Accept status from either JSON body (novo_status) or form data (new_status)
-    status_input = novo_status
-    if new_status and not status_input:
-        # Parse new_status from form (it's JSON string)
-        logger.info(f"[STATUS UPDATE] Parsing new_status from form: {new_status}")
+    status_input = None
+    
+    # For JSON requests, read body directly from request (Body() doesn't work well with Form())
+    if content_type.startswith("application/json"):
         try:
-            status_input = json.loads(new_status)
-            logger.info(f"[STATUS UPDATE] Parsed status_input: {status_input}")
+            body = await request.json()
+            logger.info(f"Parsed JSON body: {body}")
+            status_input = body
         except Exception as e:
-            logger.error(f"[STATUS UPDATE] Failed to parse new_status JSON: {e}")
-            status_input = new_status
+            logger.error(f"Failed to parse JSON body: {e}")
     
-    logger.info(f"[STATUS UPDATE] Final status_input: {status_input}")
+    # For multipart form, use new_status field
+    elif content_type.startswith("multipart/"):
+        if new_status:
+            logger.info(f"Parsing new_status from form: {new_status}")
+            try:
+                status_input = json.loads(new_status)
+                logger.info(f"Successfully parsed new_status to: {status_input}")
+            except Exception as e:
+                logger.error(f"Failed to parse new_status as JSON: {e}")
+                status_input = new_status
+    
+    logger.info(f"Final status_input: {status_input}, type: {type(status_input)}")
     
     service = ShipmentStatusService()
     payload = await service.parse_request(novo_status=status_input, recebedor_raw=recebedor, request=request)
+    logger.info(f"Payload after parse_request: code={payload.code}")
     return await service.change_status(db=db, invoice_id=carga_id, payload=payload, anexo_file=anexo)
 
 @router.post("/{carga_id}/upload-xml", response_model=UploadXmlResponse)
