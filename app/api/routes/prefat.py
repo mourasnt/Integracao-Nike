@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db import get_db
 from app.models.prefat import Prefat
-from app.api.deps.security import get_current_user
+from app.api.deps.security import is_api_user
 from app.schemas.prefat import PrefatRequest
 import base64
 import httpx
@@ -11,7 +11,7 @@ import httpx
 router = APIRouter()
 
 @router.get("/prefat")
-async def get_prefat(db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
+async def get_prefat(db: AsyncSession = Depends(get_db), current_user: str = Depends(is_api_user)):
     q = select(Prefat)
     res = await db.execute(q)
     prefats = res.scalars().all()
@@ -26,7 +26,7 @@ async def get_prefat(db: AsyncSession = Depends(get_db), current_user: str = Dep
     return [serialize(p) for p in prefats]
 
 @router.get("/prefat/{prefat_id}")
-async def get_prefat_by_id(prefat_id: int, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
+async def get_prefat_by_id(prefat_id: int, db: AsyncSession = Depends(get_db), current_user: str = Depends(is_api_user)):
     prefat = await db.get(Prefat, prefat_id)
     if not prefat:
         return {"error": "Prefat not found"}
@@ -41,7 +41,7 @@ async def get_prefat_by_id(prefat_id: int, db: AsyncSession = Depends(get_db), c
 async def create_prefat(
     request: PrefatRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(is_api_user)
 ):
     try:
         layout_recebido = request.layout

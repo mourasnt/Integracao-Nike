@@ -6,7 +6,6 @@ from app.db import get_db
 from app.models.shipment import Shipment, ShipmentInvoice
 from app.services.constants import VALID_CODES, VALID_CODES_SET
 from app.api.deps.security import is_front, is_front_admin
-from typing import Optional, Any, List
 from fastapi import Request
 from loguru import logger
 import json

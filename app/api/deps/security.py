@@ -70,3 +70,8 @@ async def is_front_admin(current_user: str = Depends(get_current_user)):
     if current_user not in settings.front_admin_users:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
     return True
+
+async def is_api_user(current_user: str = Depends(get_current_user)):
+    if current_user not in settings.api_users:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
+    return True

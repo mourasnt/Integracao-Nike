@@ -12,7 +12,7 @@ from loguru import logger
 from app.db import get_db
 from app.schemas.notfis import NotfisPayload
 from app.schemas.emissao import EmissaoResponse
-from app.api.deps.security import get_current_user
+from app.api.deps.security import is_api_user
 from app.services.emissao_service import EmissaoService
 
 
@@ -22,24 +22,9 @@ router = APIRouter()
 @router.post("/emissao", response_model=EmissaoResponse)
 async def receive_emission(
     payload: NotfisPayload,
-    current_user: str = Depends(get_current_user),
+    current_user: str = Depends(is_api_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Recebe um payload Notfis e persiste cada minuta e suas notas.
-    
-    Regras principais:
-    - Autenticação via JWT obrigatória
-    - Validação de campos via Pydantic (cServ, nDoc, chave, etc)
-    - Transação isolada por minuta (falha em uma não afeta as outras)
-    - Enriquecimento de localidades (best-effort)
-    
-    Returns:
-        200: Todas minutas processadas com sucesso
-        207: Sucesso parcial (algumas minutas falharam)
-        400: Todas minutas falharam ou payload vazio
-        500: Erro interno do servidor
-    """
-    logger.debug("/emissao called by user=%s", current_user)
     
     # Validação de payload vazio
     if not payload.documentos:
