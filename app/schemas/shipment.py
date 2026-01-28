@@ -94,6 +94,13 @@ class LocationOut(BaseModel):
         from_attributes = True
 
 
+class StatusOut(BaseModel):
+    """Status output for API responses."""
+    codigo: Optional[str] = None
+    descricao: Optional[str] = None
+    categoria: Optional[str] = None
+
+
 class ShipmentInvoiceOut(BaseModel):
     id: int
     access_key: Optional[str] = None
@@ -119,6 +126,7 @@ class ShipmentRead(BaseModel):
     origem: Optional[LocationOut] = None
     destino: Optional[LocationOut] = None
     invoices: List[ShipmentInvoiceOut] = []
+    status: Optional[StatusOut] = None
 
     class Config:
         from_attributes = True

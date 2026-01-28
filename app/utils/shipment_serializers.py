@@ -9,6 +9,7 @@ from app.schemas.shipment import (
     LocationOut,
     ShipmentInvoiceOut,
     ShipmentRead,
+    StatusOut,
 )
 
 
@@ -104,6 +105,22 @@ def _invoice_from(invoice: ShipmentInvoice) -> ShipmentInvoiceOut:
     )
 
 
+def _status_from(shipment: Shipment) -> Optional[StatusOut]:
+    """Build StatusOut from shipment's status JSON field."""
+    if shipment is None:
+        return None
+    
+    status_data = getattr(shipment, "status", None)
+    if not status_data or not isinstance(status_data, dict):
+        return None
+    
+    return StatusOut(
+        codigo=status_data.get("code"),
+        descricao=status_data.get("message"),
+        categoria=status_data.get("type"),
+    )
+
+
 def shipment_to_read(shipment: Shipment, include_locations: bool = True) -> ShipmentRead:
     return ShipmentRead(
         id=shipment.id,
@@ -120,4 +137,5 @@ def shipment_to_read(shipment: Shipment, include_locations: bool = True) -> Ship
         origem=_location_from(shipment, "origem") if include_locations else None,
         destino=_location_from(shipment, "destino") if include_locations else None,
         invoices=[_invoice_from(inv) for inv in getattr(shipment, "invoices", [])],
+        status=_status_from(shipment),
     )
