@@ -49,19 +49,24 @@ def create_access_token(data: dict):
 
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
-    print("Attempting to authorize request via bearer token")
     if credentials is None or not credentials.credentials:
-        print("No credentials presented in bearer token header")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm] if _JWT_AVAILABLE else None)
         username: str = payload.get("sub")
         if username is None:
-            print("JWT valid but 'sub' missing: %s", payload)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-        print("Authenticated user=%s via token", username)
         return username
     except Exception as e:
-        print("Token decode failed: %s", str(e))
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+async def is_front(current_user: str = Depends(get_current_user)):
+    if current_user not in settings.front_users:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
+    return True
+
+async def is_front_admin(current_user: str = Depends(get_current_user)):
+    if current_user not in settings.front_admin_users:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
+    return True

@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from app.db import get_db
 from app.models.shipment import Shipment, ShipmentInvoice
 from app.services.constants import VALID_CODES, VALID_CODES_SET
-from app.api.deps.security import get_current_user
+from app.api.deps.security import is_front, is_front_admin
 from typing import Optional, Any, List
 from fastapi import Request
 from loguru import logger
@@ -19,9 +19,7 @@ router = APIRouter(prefix="/cargas")
 
 
 @router.get("/", response_model=List[ShipmentListRead])
-async def listar_cargas(current_user: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user != "integracao_logistica":
-        raise HTTPException(403, "Acesso negado")
+async def listar_cargas(current_user: str = Depends(is_front), db: AsyncSession = Depends(get_db)):
 
     q = select(Shipment).options(selectinload(Shipment.invoices))
     res = await db.execute(q)
@@ -32,7 +30,7 @@ async def listar_cargas(current_user: str = Depends(get_current_user), db: Async
 
 
 @router.get("/{carga_id}", response_model=ShipmentDetailRead)
-async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def obter_carga(carga_id: int,  current_user: str = Depends(is_front), db: AsyncSession = Depends(get_db)):
     q = select(Shipment).where(Shipment.id == carga_id).options(selectinload(Shipment.invoices))
     res = await db.execute(q)
     carga = res.scalars().first()
@@ -47,7 +45,7 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
 @router.post("/{carga_id}/status", response_model=ShipmentStatusResponse)
 async def alterar_status(
     carga_id: int,
-    current_user: str = Depends(get_current_user),
+    current_user: str = Depends(is_front_admin),
     anexo: Optional[UploadFile] = File(None),
     new_status: Optional[str] = Form(None, description="Status from form data (multipart)"),
     recebedor: Optional[str] = Form(None),
@@ -96,7 +94,7 @@ async def upload_xml(
     carga_id: int,
     xmls: Optional[list[UploadFile]] = File(None),
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(is_front_admin),
 ):
     service = ShipmentXmlService()
     return await service.upload_xmls(db=db, invoice_id=carga_id, xml_files=xmls)

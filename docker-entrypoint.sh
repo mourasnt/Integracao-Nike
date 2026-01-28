@@ -149,6 +149,12 @@ if [ -n "$CLIENT_USER" ] && [ -n "$CLIENT_PASSWORD" ] && [ -f scripts/create_use
   python scripts/create_user.py "$CLIENT_USER" "$CLIENT_PASSWORD"
 fi
 
+# Cria usuário para o cliente do FRONT se as variáveis existirem
+if [ -n "$CLIENT_FRONT_USER" ] && [ -n "$CLIENT_FRONT_PASSWORD" ] && [ -f scripts/create_user.py ]; then
+  echo "Creating initial API key for user $CLIENT_FRONT_USER..."
+  python scripts/create_user.py "$CLIENT_FRONT_USER" "$CLIENT_FRONT_PASSWORD"
+fi
+
 # =================================================================================
 # 4. Iniciar Aplicação
 # =================================================================================
