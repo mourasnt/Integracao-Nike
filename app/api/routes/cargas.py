@@ -55,14 +55,26 @@ async def alterar_status(
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
+    logger.info(f"[STATUS UPDATE] carga_id={carga_id}, user={current_user}")
+    logger.info(f"[STATUS UPDATE] Content-Type: {request.headers.get('content-type') if request else 'N/A'}")
+    logger.info(f"[STATUS UPDATE] novo_status (Body): {novo_status}")
+    logger.info(f"[STATUS UPDATE] new_status (Form): {new_status}")
+    logger.info(f"[STATUS UPDATE] anexo presente: {anexo is not None}")
+    logger.info(f"[STATUS UPDATE] recebedor: {recebedor}")
+    
     # Accept status from either JSON body (novo_status) or form data (new_status)
     status_input = novo_status
     if new_status and not status_input:
         # Parse new_status from form (it's JSON string)
+        logger.info(f"[STATUS UPDATE] Parsing new_status from form: {new_status}")
         try:
             status_input = json.loads(new_status)
-        except:
+            logger.info(f"[STATUS UPDATE] Parsed status_input: {status_input}")
+        except Exception as e:
+            logger.error(f"[STATUS UPDATE] Failed to parse new_status JSON: {e}")
             status_input = new_status
+    
+    logger.info(f"[STATUS UPDATE] Final status_input: {status_input}")
     
     service = ShipmentStatusService()
     payload = await service.parse_request(novo_status=status_input, recebedor_raw=recebedor, request=request)
