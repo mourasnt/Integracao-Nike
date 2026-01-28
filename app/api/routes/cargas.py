@@ -9,6 +9,7 @@ from app.api.deps.security import get_current_user
 from typing import Optional, Any, List
 from fastapi import Request
 from loguru import logger
+import json
 from app.schemas.shipment import ShipmentListRead, ShipmentDetailRead, ShipmentStatusResponse, UploadXmlResponse
 from app.utils.shipment_serializers import shipment_to_read
 from app.services.shipment_status_service import ShipmentStatusService
@@ -46,19 +47,25 @@ async def obter_carga(carga_id: int,  current_user: str = Depends(get_current_us
 @router.post("/{carga_id}/status", response_model=ShipmentStatusResponse)
 async def alterar_status(
     carga_id: int,
-    novo_status: Optional[Any] = Body(
-        None,
-        description="Código do novo status (ex: {\"code\": \"1\"} ou \"1\")",
-    ),
     current_user: str = Depends(get_current_user),
+    novo_status: Optional[Any] = Body(None, description="Código do novo status (ex: {\"code\": \"1\"} ou \"1\")"),
+    new_status: Optional[str] = Form(None, description="Status from form data (multipart)"),
     anexo: Optional[UploadFile] = File(None),
     recebedor: Optional[str] = Form(None),
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
-    # Mantém compatibilidade de entrada: aceita code como string/objeto e recebedor via form ou JSON, com anexos opcionais
+    # Accept status from either JSON body (novo_status) or form data (new_status)
+    status_input = novo_status
+    if new_status and not status_input:
+        # Parse new_status from form (it's JSON string)
+        try:
+            status_input = json.loads(new_status)
+        except:
+            status_input = new_status
+    
     service = ShipmentStatusService()
-    payload = await service.parse_request(novo_status=novo_status, recebedor_raw=recebedor, request=request)
+    payload = await service.parse_request(novo_status=status_input, recebedor_raw=recebedor, request=request)
     return await service.change_status(db=db, invoice_id=carga_id, payload=payload, anexo_file=anexo)
 
 @router.post("/{carga_id}/upload-xml", response_model=UploadXmlResponse)

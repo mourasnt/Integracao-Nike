@@ -41,16 +41,15 @@ class ShipmentStatusService:
         anexos_input = None
         recebedor_validado = None
 
-        # Try to read JSON body when content-type is application/json
-        if request is not None and request.headers.get("content-type", "").startswith("application/json"):
-            try:
-                body = await request.json()
-                if isinstance(body, dict):
-                    anexos_input = body.get("anexos") or None
-                    if "recebedor" in body:
-                        recebedor_raw = body.get("recebedor", recebedor_raw)
-            except Exception:
-                pass
+        # For JSON requests, novo_status comes from Body() which already parsed the JSON
+        # For multipart, novo_status comes from form field parsed by FastAPI
+        # We should NOT read request.json() again as it causes double consumption
+        
+        # If novo_status is a dict (from JSON body), check for additional fields
+        if isinstance(novo_status, dict):
+            anexos_input = novo_status.get("anexos") or None
+            if "recebedor" in novo_status:
+                recebedor_raw = novo_status.get("recebedor", recebedor_raw)
 
         # Recebedor can arrive as dict or JSON string
         if isinstance(recebedor_raw, dict):
